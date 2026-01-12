@@ -11,6 +11,9 @@
   --primary: #1f2937;
   --bg: #f9fafb;
   --card: #ffffff;
+  --hot-color: #ef4444;
+  --cold-color: #3b82f6;
+  --mid-color: #6b7280;
 }
 
 body {
@@ -27,7 +30,7 @@ body {
 }
 
 h1 {
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   margin-bottom: 8px;
 }
 
@@ -69,20 +72,45 @@ button:active {
   box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
-.stat {
+.stat-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+.stat-table th, .stat-table td {
+  border: 1px solid #d1d5db;
+  padding: 6px 10px;
+  text-align: center;
   font-size: 0.9rem;
-  line-height: 1.6;
 }
 
 .set {
-  font-size: 1.05rem;
-  font-weight: 600;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   margin: 8px 0;
 }
 
-/* PC 加強 */
+.ball {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.ball.hot { background: var(--hot-color); }
+.ball.mid { background: var(--mid-color); }
+.ball.cold { background: var(--cold-color); }
+
 @media (min-width: 768px) {
-  h1 { font-size: 1.6rem; }
+  h1 { font-size: 1.8rem; }
+  .ball { width: 40px; height: 40px; font-size: 1.1rem; }
 }
 </style>
 </head>
@@ -98,7 +126,12 @@ button:active {
 
 <div class="card">
   <h3>熱 / 冷 統計（近 50 期）</h3>
-  <div id="stats" class="stat"></div>
+  <table class="stat-table" id="stats">
+    <thead>
+      <tr><th>熱號 Top10</th><th>冷號 Top10</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 </div>
 
 <div class="card">
@@ -119,7 +152,7 @@ function processCSV() {
 
   reader.onload = function(e) {
     const text = e.target.result;
-    const rows = text.trim().split("\n").slice(1,51); // 取最新50期
+    const rows = text.trim().split("\n").slice(1,51);
     const draws = rows.map(r => r.split(",").slice(1).map(Number));
     generate(draws);
   };
@@ -137,9 +170,11 @@ function generate(draws) {
   const cold = sorted.slice(-10).map(x=>Number(x[0]));
   const mid = Object.keys(freq).map(Number).filter(n=>!hot.includes(n)&&!cold.includes(n));
 
-  document.getElementById("stats").innerHTML =
-    `熱號 Top10：${hot.join("、")}<br>冷號 Top10：${cold.join("、")}`;
+  // 更新統計表
+  const tbody = document.querySelector("#stats tbody");
+  tbody.innerHTML = `<tr><td>${hot.join("、")}</td><td>${cold.join("、")}</td></tr>`;
 
+  // 生成號碼
   const results = [];
   while (results.length < SET_COUNT) {
     let set = [
@@ -148,16 +183,26 @@ function generate(draws) {
       ...pick(cold,1)
     ];
     set = [...new Set(set)].sort((a,b)=>a-b);
-
     if (set.length !== 5) continue;
     if (!valid(set)) continue;
     if (results.some(r=>overlap(r,set)>2)) continue;
-
     results.push(set);
   }
 
-  document.getElementById("result").innerHTML =
-    results.map((s,i)=>`<div class="set">注 ${i+1}：${s.join("・")}</div>`).join("");
+  // 顯示號碼
+  const resultDiv = document.getElementById("result");
+  resultDiv.innerHTML = "";
+  results.forEach((s,i)=>{
+    const setDiv = document.createElement("div");
+    setDiv.className = "set";
+    s.forEach(n=>{
+      const span = document.createElement("div");
+      span.className = "ball " + (hot.includes(n)?"hot":cold.includes(n)?"cold":"mid");
+      span.textContent = n;
+      setDiv.appendChild(span);
+    });
+    resultDiv.appendChild(setDiv);
+  });
 }
 
 function pick(arr,n) {
@@ -170,7 +215,6 @@ function valid(set) {
   if (![2,3].includes(odd)) return false;
   if (![2,3].includes(small)) return false;
   if (set.every(n=>n<=31)) return false;
-
   let seq = 0;
   for (let i=1;i<set.length;i++) if (set[i]===set[i-1]+1) seq++;
   return seq <= 1;
