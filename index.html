@@ -7,7 +7,7 @@
 <style>
 :root {
     --primary: #0f172a; --secondary: #1e293b; --accent: #38bdf8; --gold: #fbbf24;
-    --success: #22c55e; --bg: #0f172a; --card-bg: rgba(30, 41, 59, 0.7);
+    --success: #22c55e; --error: #ef4444; --bg: #0f172a; --card-bg: rgba(30, 41, 59, 0.7);
     --text: #f1f5f9; --glass: rgba(255, 255, 255, 0.03);
 }
 
@@ -58,6 +58,8 @@ td { padding: 15px 5px; border-bottom: 1px solid rgba(255,255,255,0.03); text-al
     margin: 4px; font-weight: 800; font-size: 16px; color: var(--accent);
 }
 
+.cold-tag { background: rgba(239, 68, 68, 0.15); color: var(--error); padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; }
+
 .strategy-block { 
     background: var(--glass); padding: 20px; margin: 15px 0; border-radius: 18px;
     border-left: 4px solid rgba(255,255,255,0.1); cursor: pointer;
@@ -67,8 +69,6 @@ td { padding: 15px 5px; border-bottom: 1px solid rgba(255,255,255,0.03); text-al
 .logic-detail { display: none; margin-top: 15px; padding: 15px; background: rgba(0, 0, 0, 0.3); border-radius: 12px; font-size: 0.85rem; }
 
 .rate-badge { font-size: 0.7rem; padding: 5px 12px; border-radius: 20px; background: rgba(56, 189, 248, 0.15); color: var(--accent); font-weight: bold; }
-
-.inline-input { width: 60px; height: 60px; text-align: center; margin: 0 5px; border: 2px solid rgba(255,255,255,0.1); border-radius: 16px; font-size: 1.4rem; background: #0f172a; color: var(--gold); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -89,6 +89,11 @@ td { padding: 15px 5px; border-bottom: 1px solid rgba(255,255,255,0.03); text-al
         <button onclick="runAll()">啟動量化決策分析</button>
     </div>
 
+    <div id="cold_rank_card" class="card" style="display:none;">
+        <h3>⚠️ 目前極冷號排行榜 (遺漏期數)</h3>
+        <div id="cold_list" style="display: flex; justify-content: space-around; flex-wrap: wrap;"></div>
+    </div>
+
     <div class="dashboard-grid">
         <div id="history" class="card"><h3>近期開獎歷史</h3></div>
         <div id="stats_table" class="card"><h3>策略回測表現</h3></div>
@@ -107,10 +112,10 @@ td { padding: 15px 5px; border-bottom: 1px solid rgba(255,255,255,0.03); text-al
 <script>
 let HIST_DATA = [];
 const RULES = [
-    { name: "保守型策略", pool: "last1+5", desc: "鎖定熱號連莊規律。", logic: "熱號加權 70% + 隨機 30%" },
-    { name: "平衡型策略", pool: "last5+5+10", desc: "結合中短期頻率尋找上升趨勢。", logic: "頻率平衡 50% + 遺漏修正 50%" },
-    { name: "激進型策略", pool: "last5+10", desc: "捕捉跳躍式版路。", logic: "關聯矩陣 80% + 隨機 20%" },
-    { name: "反轉冷號策略", pool: "cold", desc: "反向操作，專攻長期未開出的遺漏號碼（冰火組合）。", logic: "遺漏值權重 70% + 熱號補位 30%" }
+    { name: "保守型策略", pool: "hot", desc: "鎖定熱號連莊規律。", logic: "熱號加權 70% + 隨機 30%" },
+    { name: "平衡型策略", pool: "mix", desc: "結合中短期頻率尋找上升趨勢。", logic: "頻率平衡 50% + 遺漏修正 50%" },
+    { name: "激進型策略", pool: "corr", desc: "捕捉跳躍式版路。", logic: "關聯矩陣 80% + 隨機 20%" },
+    { name: "反轉冷號策略", pool: "cold", desc: "反向操作，專攻長期未開出的遺漏號碼。", logic: "遺漏值權重 70% + 熱號補位 30%" }
 ];
 
 document.getElementById('csvFile').addEventListener('change', e => {
@@ -122,10 +127,14 @@ async function runAll(){
     if(!file) return alert("請先選取 CSV");
     const text = await file.text();
     HIST_DATA = parseCSV(text);
+    
+    const omission = getOmissionMap(HIST_DATA);
+    updateColdRankUI(omission);
     showHistory(HIST_DATA);
+    
     const stats = doBacktest(HIST_DATA);
     renderStatsTable(stats);
-    renderTopCombinations(HIST_DATA, stats);
+    renderTopCombinations(HIST_DATA, stats, omission);
     drawTrendChart(stats.map(s=>s.hit2Rate*100), stats.map(s=>s.hit3Rate*100));
 }
 
@@ -145,19 +154,33 @@ function getOmissionMap(data) {
     return map;
 }
 
-function generateSmartPick(prev, rule, simCount = 100) {
-    const omission = getOmissionMap(prev);
+function updateColdRankUI(omission) {
+    const sorted = Object.entries(omission).sort((a,b) => b[1] - a[1]).slice(0, 5);
+    const container = document.getElementById("cold_rank_card");
+    container.style.display = "block";
+    document.getElementById("cold_list").innerHTML = sorted.map(item => `
+        <div style="text-align:center; margin:10px;">
+            <div class="ball" style="border: 2px solid var(--error)">${String(item[0]).padStart(2,'0')}</div>
+            <div class="cold-tag">${item[1]} 期未開</div>
+        </div>
+    `).join("");
+}
+
+function getDigitAnalysis(data) {
+    const counts = Array(10).fill(0);
+    data.slice(-50).forEach(d => d.nums.forEach(n => counts[n % 10]++));
+    return counts;
+}
+
+function generateSmartPick(prev, rule, omission, simIdx = 0) {
     const freq = {};
     prev.forEach(d => d.nums.forEach(n => freq[n] = (freq[n]||0) + 1));
-    
     let candidates = [];
-    for(let i=0; i<simCount; i++) {
+    for(let i=0; i<100; i++) {
         let arr = Array.from({length: 39}, (_, i) => i + 1);
         arr.sort((a,b) => {
-            if(rule.name === "反轉冷號策略") {
-                return (omission[b] - omission[a]) + (Math.random() * 10 - 5);
-            }
-            return (freq[b]||0) - (freq[a]||0) + (Math.random() * 5 - 2.5);
+            if(rule.pool === "cold") return (omission[b] - omission[a]) + (Math.random() * 10 - 5);
+            return (freq[b]||0) - (freq[a]||0) + (Math.random() * 10 - 5) + (simIdx * 2);
         });
         candidates.push(arr.slice(0, 5).sort((a,b) => a-b));
     }
@@ -180,11 +203,14 @@ function renderStatsTable(stats){
     document.getElementById("stats_table").innerHTML = "<h3>策略回測表現</h3>" + html + "</table>";
 }
 
-function renderTopCombinations(data, stats){
+function renderTopCombinations(data, stats, omission){
     const res = document.getElementById("results");
     res.innerHTML = "<h3>智能推荐組合 (點擊查看邏輯)</h3>";
+    const digitStats = getDigitAnalysis(data);
+    const topDigit = digitStats.indexOf(Math.max(...digitStats));
+
     stats.forEach((s, idx) => {
-        const pick = generateSmartPick(data, s.rule, 150 + (idx*20));
+        const pick = generateSmartPick(data, s.rule, omission, idx);
         const ev = calculateExpectedValue(pick, data.slice(-100));
         const block = document.createElement("div");
         block.className = "strategy-block active";
@@ -192,16 +218,28 @@ function renderTopCombinations(data, stats){
             const d = document.getElementById(`detail-${idx}`);
             d.style.display = d.style.display === 'block' ? 'none' : 'block';
         };
+
         block.innerHTML = `
             <div style="display:flex; justify-content:space-between;">
                 <span style="color:var(--accent); font-weight:bold;">${s.rule.name} ▾</span>
-                <span class="rate-badge">強度: ${(ev*100).toFixed(1)}</span>
+                <span class="rate-badge">強度得分: ${(ev*100).toFixed(1)}</span>
             </div>
             <div style="margin-top:15px; text-align:center;">
                 ${pick.map(n => `<span class="ball" style="background:linear-gradient(135deg, var(--accent), #0284c7); color:white; border:none;">${String(n).padStart(2,'0')}</span>`).join("")}
             </div>
             <div id="detail-${idx}" class="logic-detail">
-                <strong>概念：</strong>${s.rule.desc}<br><strong>權重：</strong><span style="color:var(--gold)">${s.rule.logic}</span>
+                <strong>概念描述：</strong><br>${s.rule.desc}<br><br>
+                <strong>演算權重：</strong><br><span style="color:var(--gold)">${s.rule.logic}</span>
+                <div style="margin-top:15px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.1);">
+                    <strong style="color:var(--accent); font-size:0.85rem;">📊 歷史尾數熱度：</strong>
+                    <div style="display:flex; gap:5px; margin-top:8px; flex-wrap:wrap;">
+                        ${digitStats.map((count, d) => `
+                            <span style="font-size:0.7rem; padding:2px 6px; border-radius:4px; background:${d===topDigit?'var(--gold)':'rgba(255,255,255,0.05)'}; color:${d===topDigit?'#000':'#94a3b8'}">
+                                ${d}尾(${count})
+                            </span>
+                        `).join("")}
+                    </div>
+                </div>
             </div>`;
         res.appendChild(block);
     });
