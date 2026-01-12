@@ -3,211 +3,263 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>539 QUANT ENGINE · Deterministic</title>
+<title>539 QUANT ENGINE · Pro</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --accent: #38bdf8;
+  --success: #22c55e;
+  --text: #f1f5f9;
+  --text-dim: #94a3b8;
+}
 body {
-  background:#0f172a;
-  color:#e5e7eb;
-  font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif;
-  margin:0; padding:30px;
+  background: var(--bg); color: var(--text);
+  font-family: 'Inter', system-ui, "PingFang TC", sans-serif;
+  margin: 0; padding: 20px;
 }
-.container{max-width:1200px;margin:auto}
-h1{color:#38bdf8;margin-bottom:5px}
-.sub{color:#94a3b8;margin-bottom:25px}
-.card{
-  background:#1e293b;
-  border-radius:14px;
-  padding:20px;
-  margin-bottom:25px;
+.container { max-width: 1100px; margin: auto; }
+h1 { color: var(--accent); margin: 0; font-size: 1.8rem; letter-spacing: -0.5px; }
+.sub { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 25px; display: flex; gap: 15px; }
+.card {
+  background: var(--card); border-radius: 12px; padding: 24px;
+  margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.05);
 }
-button{
-  background:#38bdf8;color:#0f172a;
-  border:none;padding:12px 26px;
-  font-weight:700;border-radius:8px;
-  cursor:pointer
+.header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+h3 { margin: 0; font-size: 1.1rem; color: var(--accent); }
+
+/* 交互組件 */
+button {
+  background: var(--accent); color: var(--bg);
+  border: none; padding: 12px 28px;
+  font-weight: 700; border-radius: 6px; cursor: pointer;
+  transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.ball{
-  display:inline-block;
-  width:34px;height:34px;
-  line-height:34px;
-  text-align:center;
-  border-radius:50%;
-  background:#334155;
-  margin:2px;
-  font-weight:700;
+button:hover { transform: translateY(-1px); filter: brightness(1.1); }
+input[type="file"] { color: var(--text-dim); font-size: 0.85rem; }
+
+/* 號碼球與佈局 */
+.ball {
+  display: inline-block; width: 32px; height: 32px; line-height: 32px;
+  text-align: center; border-radius: 50%; background: #334155;
+  margin: 2px; font-weight: 700; font-size: 0.85rem; border: 1px solid rgba(255,255,255,0.1);
 }
-.strategy{margin-top:20px;border-top:1px solid rgba(255,255,255,.1);padding-top:20px}
-.pickRow{
-  display:flex;align-items:center;gap:14px;
-  padding:12px;margin:10px 0;
-  background:rgba(255,255,255,.03);
-  border-radius:10px
+.strategy { margin-top: 25px; }
+.pickRow {
+  display: flex; align-items: center; gap: 15px;
+  padding: 12px 16px; margin: 8px 0;
+  background: rgba(255,255,255,0.03); border-radius: 8px;
+  transition: 0.2s;
 }
-.good{border:1px solid #22c55e}
-.badge{
-  background:#38bdf8;color:#0f172a;
-  padding:4px 10px;border-radius:6px;
-  font-size:.75rem;font-weight:700
+.pickRow:hover { background: rgba(255,255,255,0.06); }
+.good { border-left: 4px solid var(--success); }
+.badge {
+  background: rgba(56, 189, 248, 0.1); color: var(--accent);
+  padding: 4px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 700;
 }
-table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,.08)}
-th{color:#94a3b8;text-align:left}
-canvas{max-height:320px}
+
+/* 數據表格 */
+table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+th, td { padding: 14px 10px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
+th { color: var(--text-dim); font-weight: 500; }
+.history-row { display: flex; align-items: center; gap: 20px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+
+canvas { max-height: 280px !important; }
 </style>
 </head>
 
 <body>
 <div class="container">
-<h1>539 QUANT ENGINE</h1>
-<div class="sub">Deterministic · Rolling Backtest · No Random</div>
+  <div class="header-row">
+    <div>
+      <h1>539 QUANT ENGINE</h1>
+      <div class="sub">
+        <span>● Deterministic</span>
+        <span>● Rolling Backtest</span>
+        <span>● Factor Weighted</span>
+      </div>
+    </div>
+    <div class="card" style="padding:15px; margin-bottom:0; background:rgba(56,189,248,0.05)">
+      <div style="font-size:0.75rem; color:var(--accent); margin-bottom:5px">當前因子權重分配</div>
+      <div style="font-size:0.85rem; letter-spacing:1px">頻率 45% · 近期 35% · 轉移 20%</div>
+    </div>
+  </div>
 
-<div class="card">
-<input type="file" id="csvFile" accept=".csv">
-<button onclick="run()">執行量化回測</button>
-</div>
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <input type="file" id="csvFile" accept=".csv">
+      <button onclick="run()">執行量化運算 ➔</button>
+    </div>
+  </div>
 
-<div class="card" id="history"></div>
-<div class="card" id="kpi"></div>
-<div class="card" id="results"></div>
-<div class="card">
-<canvas id="chart"></canvas>
-</div>
+  <div style="display:grid; grid-template-columns: 1fr 1.5fr; gap:20px;">
+    <div class="card" id="history"><h3>最近 5 期觀察</h3></div>
+    <div class="card" id="kpi"><h3>策略勝率 KPI</h3></div>
+  </div>
+
+  <div class="card" id="results"><h3>等待數據注入...</h3></div>
+  
+  <div class="card">
+    <h3>策略收益矩陣</h3>
+    <canvas id="chart"></canvas>
+  </div>
 </div>
 
 <script>
-/* ================= 基本設定 ================= */
 const RULES = [
- {name:"Alpha 保守", pool:"last1+5"},
- {name:"Beta 均衡", pool:"last5+5+10"},
- {name:"Gamma 進取", pool:"last5+10"}
+  {name:"Alpha 保守型", pool:"last1+5", desc:"專注於極短線號碼熱度慣性。"},
+  {name:"Beta 均衡型", pool:"last5+5+10", desc:"兼顧歷史頻率與位移跳號空間。"},
+  {name:"Gamma 進取型", pool:"last5+10", desc:"大範圍佈局冷熱轉換關鍵區間。"}
 ];
 
-/* ================= 主流程 ================= */
 async function run(){
- const file=document.getElementById("csvFile").files[0];
- if(!file){alert("請上傳 CSV");return;}
- const text=await file.text();
- const data=parseCSV(text);
+  const file = document.getElementById("csvFile").files[0];
+  if(!file){alert("請選擇 CSV 歷史數據檔");return;}
+  const text = await file.text();
+  const data = parseCSV(text);
 
- showHistory(data);
- const stats=RULES.map(r=>backtest(data,r));
- renderKPI(stats);
- renderResults(data,stats);
- drawChart(stats);
+  showHistory(data);
+  const stats = RULES.map(r => backtest(data, r));
+  renderKPI(stats);
+  renderResults(data, stats);
+  drawChart(stats);
 }
 
-/* ================= CSV ================= */
 function parseCSV(t){
- const l=t.trim().split("\n");l.shift();
- return l.map(r=>{
-   const p=r.split(",");
-   return{date:p[0],nums:p.slice(2,7).map(Number)};
- });
+  const l = t.trim().split("\n"); l.shift();
+  return l.map(r => {
+    const p = r.split(",");
+    return { date: p[0], nums: p.slice(2, 7).map(Number).sort((a,b)=>a-b) };
+  }).sort((a,b)=>new Date(a.date)-new Date(b.date));
 }
 
-/* ================= 量化核心 ================= */
-function generateQuantPick(train,rule){
- const pool=buildPool(train.slice(-5),rule);
- const freq={},rec={},trans={};
+/* ================= 量化算法：三因子加權模型 ================= */
+function generateQuantPick(train, rule){
+  const pool = buildPool(train.slice(-5), rule);
+  const freq = {}, rec = {}, trans = {};
 
- train.forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
- [...train].reverse().forEach((d,i)=>d.nums.forEach(n=>rec[n]??=(i+1)));
+  // 因子 1: 全局頻率 (Global Frequency)
+  train.forEach(d => d.nums.forEach(n => freq[n] = (freq[n]||0) + 1));
+  
+  // 因子 2: 近期熱度 (Recency / Forget Curve)
+  [...train].reverse().forEach((d, i) => d.nums.forEach(n => rec[n] ??= (i + 1)));
 
- for(let i=0;i<train.length-1;i++){
-  train[i].nums.forEach(a=>{
-   trans[a]??={};
-   train[i+1].nums.forEach(b=>trans[a][b]=(trans[a][b]||0)+1);
-  });
- }
-
- const last=train.at(-1).nums;
- const scored=pool.map(n=>{
-  let t=0;last.forEach(l=>t+=(trans[l]?.[n]||0));
-  return{
-   n,
-   s:(freq[n]||0)/train.length*0.45 +
-     (rec[n]?1/rec[n]:0)*0.35 +
-     t*0.2
-  };
- });
-
- scored.sort((a,b)=>b.s-a.s||a.n-b.n);
- return scored.slice(0,5).map(x=>x.n).sort((a,b)=>a-b);
-}
-
-/* ================= 回測 ================= */
-function backtest(data,rule){
- let h2=0,h3=0,t=0;
- for(let i=50;i<data.length;i++){
-  const train=data.slice(i-50,i);
-  const pick=generateQuantPick(train,rule);
-  const hit=data[i].nums.filter(n=>pick.includes(n)).length;
-  t++; if(hit>=2)h2++; if(hit>=3)h3++;
- }
- return{rule,hit2:h2/t,hit3:h3/t};
-}
-
-/* ================= 輔助 ================= */
-function buildPool(latest,rule){
- const s=new Set();
- if(rule.pool.includes("last1"))latest.at(-1).nums.forEach(n=>s.add(n));
- if(rule.pool.includes("last5"))latest.forEach(d=>d.nums.forEach(n=>s.add(n)));
- [...s].forEach(n=>{
-  if(rule.pool.includes("+5")&&n+5<=39)s.add(n+5);
-  if(rule.pool.includes("+10")&&n+10<=39)s.add(n+10);
- });
- return [...s];
-}
-
-/* ================= 顯示 ================= */
-function showHistory(d){
- document.getElementById("history").innerHTML=
- "<h3>最近 5 期</h3>"+
- d.slice(-5).map(x=>x.nums.map(n=>`<span class="ball">${n}</span>`).join("")).join("<br>");
-}
-
-function renderKPI(s){
- document.getElementById("kpi").innerHTML=
- "<h3>回測勝率</h3><table>"+
- s.map(x=>`<tr><td>${x.rule.name}</td><td>中2 ${(x.hit2*100).toFixed(1)}%</td><td>中3 ${(x.hit3*100).toFixed(1)}%</td></tr>`).join("")+
- "</table>";
-}
-
-function renderResults(data,stats){
- const r=document.getElementById("results");
- r.innerHTML="<h3>回測後最佳組合</h3>";
- stats.forEach(s=>{
-  const picks=[];
-  for(let i=0;i<3;i++){
-   const p=generateQuantPick(data.slice(-60+i),s.rule);
-   const h2=data.filter(d=>d.nums.filter(n=>p.includes(n)).length>=2).length/data.length;
-   picks.push({p,h2});
+  // 因子 3: 轉移關聯 (Transition Matrix)
+  for(let i=0; i<train.length-1; i++){
+    train[i].nums.forEach(a => {
+      trans[a] ??= {};
+      train[i+1].nums.forEach(b => trans[a][b] = (trans[a][b]||0) + 1);
+    });
   }
-  picks.sort((a,b)=>b.h2-a.h2);
-  r.innerHTML+=`<div class="strategy"><b>${s.rule.name}</b>`+
-   picks.map((x,i)=>`
-    <div class="pickRow ${x.h2>=0.5?"good":""}">
-     #${i+1}
-     ${x.p.map(n=>`<span class="ball">${n}</span>`).join("")}
-     <span class="badge">${(x.h2*100).toFixed(1)}%</span>
-    </div>`).join("")+
-   "</div>";
- });
+
+  const last = train.at(-1).nums;
+  const scored = pool.map(n => {
+    let tScore = 0;
+    last.forEach(l => tScore += (trans[l]?.[n] || 0));
+    
+    // 權重計算核心
+    const score = 
+      ((freq[n]||0) / train.length * 0.45) + // 頻率 45%
+      ((rec[n] ? 1 / rec[n] : 0) * 0.35) +   // 近期 35%
+      (tScore * 0.2);                       // 轉移 20%
+    return { n, s: score };
+  });
+
+  return scored.sort((a,b) => b.s - a.s || a.n - b.n).slice(0, 5).map(x => x.n).sort((a,b) => a - b);
+}
+
+function backtest(data, rule){
+  let h2 = 0, h3 = 0, total = 0;
+  // 滾動回測窗格：使用前 50 期預測第 51 期
+  for(let i=50; i<data.length; i++){
+    const train = data.slice(i-50, i);
+    const pick = generateQuantPick(train, rule);
+    const hit = data[i].nums.filter(n => pick.includes(n)).length;
+    total++;
+    if(hit >= 2) h2++;
+    if(hit >= 3) h3++;
+  }
+  return { rule, hit2: h2/total, hit3: h3/total, total };
+}
+
+function buildPool(latest, rule){
+  const s = new Set();
+  if(rule.pool.includes("last1")) latest.at(-1).nums.forEach(n => s.add(n));
+  if(rule.pool.includes("last5")) latest.forEach(d => d.nums.forEach(n => s.add(n)));
+  [...s].forEach(n => {
+    if(rule.pool.includes("+5") && n+5 <= 39) s.add(n+5);
+    if(rule.pool.includes("+10") && n+10 <= 39) s.add(n+10);
+  });
+  return [...s];
+}
+
+function showHistory(d){
+  const container = document.getElementById("history");
+  const latest = d.slice(-5).reverse();
+  container.innerHTML = "<h3>最近 5 期開獎快照</h3>" + 
+    latest.map(x => `
+      <div class="history-row">
+        <span style="font-size:0.75rem; color:var(--text-dim); width:45px">${x.date.split('-').slice(1).join('/')}</span>
+        <div>${x.nums.map(n => `<span class="ball">${String(n).padStart(2,'0')}</span>`).join("")}</div>
+      </div>
+    `).join("");
+}
+
+function renderKPI(stats){
+  document.getElementById("kpi").innerHTML = 
+    "<h3>策略績效指標 (KPI)</h3><table><thead><tr><th>模型名稱</th><th>中 2 勝率</th><th>中 3 勝率</th></tr></thead>" +
+    stats.map(x => `<tr>
+      <td style="color:var(--accent); font-weight:700">${x.rule.name}</td>
+      <td>${(x.hit2*100).toFixed(1)}%</td>
+      <td style="color:var(--success)">${(x.hit3*100).toFixed(1)}%</td>
+    </tr>`).join("") + "</table>";
+}
+
+function renderResults(data, stats){
+  const r = document.getElementById("results");
+  r.innerHTML = "<h3>AI 智能建議組合 (基於確定性因子得分)</h3>";
+  stats.forEach(s => {
+    // 取得最新建議
+    const pick = generateQuantPick(data, s.rule);
+    const h2Exp = s.hit2; // 預期勝率來自回測
+    
+    r.innerHTML += `
+      <div class="strategy">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+          <b>${s.rule.name}</b>
+          <span style="font-size:0.75rem; color:var(--text-dim)">${s.rule.desc}</span>
+        </div>
+        <div class="pickRow ${h2Exp >= 0.5 ? 'good' : ''}">
+          <div style="flex:1">${pick.map(n => `<span class="ball" style="background:var(--accent); color:var(--bg)">${String(n).padStart(2,'0')}</span>`).join("")}</div>
+          <div style="text-align:right">
+            <div class="badge">預期中2+信心度: ${(h2Exp*100).toFixed(1)}%</div>
+          </div>
+        </div>
+      </div>`;
+  });
 }
 
 function drawChart(s){
- new Chart(document.getElementById("chart"),{
-  type:"bar",
-  data:{
-   labels:s.map(x=>x.rule.name),
-   datasets:[
-    {label:"中2",data:s.map(x=>x.hit2*100),backgroundColor:"#38bdf8"},
-    {label:"中3",data:s.map(x=>x.hit3*100),backgroundColor:"#22c55e"}
-   ]
-  },
-  options:{scales:{y:{beginAtZero:true,max:100}}}
- });
+  const ctx = document.getElementById("chart").getContext("2d");
+  if(window.qChart) window.qChart.destroy();
+  window.qChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: s.map(x => x.rule.name),
+      datasets: [
+        { label: "中 2 歷史勝率", data: s.map(x => x.hit2*100), backgroundColor: "#38bdf8", borderRadius: 4 },
+        { label: "中 3 歷史勝率", data: s.map(x => x.hit3*100), backgroundColor: "#22c55e", borderRadius: 4 }
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { color: '#94a3b8', font: { size: 12 } } } },
+      scales: {
+        y: { beginAtZero: true, max: 100, grid: { color: "rgba(255,255,255,0.05)" }, ticks: { color: "#94a3b8" } },
+        x: { grid: { display: false }, ticks: { color: "#94a3b8" } }
+      }
+    }
+  });
 }
 </script>
 </body>
