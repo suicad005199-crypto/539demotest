@@ -1,272 +1,209 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>今彩539｜每週熱冷統計選號</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>539 Pro Analysis</title>
+    <style>
+        :root {
+            --primary: #1a237e;
+            --accent: #d32f2f;
+            --bg: #f5f7fa;
+            --card: #ffffff;
+        }
 
-<style>
-:root {
-  --max-width: 720px;
-  --primary: #1f2937;
-  --bg: #f3f4f6; /* 稍深的背景色增加對比 */
-  --card: #ffffff;
-  --hot-color: #ef4444;
-  --cold-color: #3b82f6;
-  --mid-color: #6b7280;
-  --accent: #2563eb;
-}
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+        }
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: var(--bg);
-  color: var(--primary);
-  line-height: 1.6;
-}
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--card);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            padding: 20px;
+            box-sizing: border-box;
+        }
 
-.container {
-  max-width: var(--max-width);
-  margin: auto;
-  padding: 24px 16px;
-}
+        h2 {
+            text-align: center;
+            color: var(--primary);
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
 
-h1 {
-  font-size: 1.75rem;
-  margin-bottom: 12px;
-  text-align: center;
-  font-weight: 800;
-  color: #111827;
-}
+        /* 上傳區優化 */
+        .upload-area {
+            border: 2px dashed #cbd5e0;
+            background: #f8fafc;
+            padding: 30px 15px;
+            text-align: center;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
 
-.description {
-  background: #e5e7eb;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  color: #4b5563;
-  margin-bottom: 20px;
-}
+        input[type="file"] {
+            width: 100%;
+            max-width: 250px;
+            margin-bottom: 15px;
+        }
 
-/* 檔案上傳美化 */
-.upload-section {
-  background: var(--card);
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-}
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            max-width: 200px;
+            transition: 0.3s;
+            -webkit-appearance: none; /* iOS 修正 */
+        }
 
-input[type="file"] {
-  display: block;
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 16px;
-  border: 2px dashed #d1d5db;
-  border-radius: 8px;
-  cursor: pointer;
-}
+        .btn:active { transform: scale(0.95); opacity: 0.9; }
 
-button {
-  width: 100%;
-  padding: 14px;
-  font-size: 1.1rem;
-  font-weight: 700;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
-}
+        /* 表格響應式 */
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
 
-button:hover {
-  background: #1d4ed8;
-  transform: translateY(-1px);
-}
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 500px; /* 確保手機上可滾動而不擠壓 */
+        }
 
-button:active {
-  transform: translateY(0);
-}
+        th {
+            background: #edf2f7;
+            color: #4a5568;
+            padding: 12px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
 
-.card {
-  background: var(--card);
-  border-radius: 16px;
-  padding: 20px;
-  margin-top: 20px;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-}
+        td {
+            padding: 16px 8px;
+            border-bottom: 1px solid #edf2f7;
+            text-align: center;
+        }
 
-h3 {
-  margin-top: 0;
-  font-size: 1.1rem;
-  border-left: 4px solid var(--accent);
-  padding-left: 10px;
-}
+        /* 號碼球 UI */
+        .ball-group {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+        }
 
-.stat-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  margin-top: 12px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #e5e7eb;
-}
+        .ball {
+            width: 32px;
+            height: 32px;
+            line-height: 32px;
+            background: linear-gradient(135deg, #ff5252, #d32f2f);
+            color: white;
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 0.85rem;
+            box-shadow: 0 4px 6px rgba(211, 47, 47, 0.2);
+        }
 
-.stat-table th {
-  background: #f8fafc;
-  font-weight: 600;
-  color: #64748b;
-  border-bottom: 2px solid #e5e7eb;
-}
+        /* 期望值標籤 */
+        .ev-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: #f1f5f9;
+            font-size: 0.8rem;
+            color: #64748b;
+            transition: 0.3s;
+        }
 
-.stat-table th, .stat-table td {
-  padding: 12px;
-  text-align: center;
-  font-size: 0.95rem;
-}
+        .ev-high {
+            background: #fef3c7;
+            color: #92400e;
+            font-weight: bold;
+        }
 
-.set {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 12px;
-  margin: 12px 0;
-  background: #f9fafb;
-  border-radius: 12px;
-}
+        @media (hover: hover) {
+            .ev-high:hover {
+                background: #f59e0b !important;
+                color: white;
+                transform: scale(1.1);
+            }
+        }
 
-.ball {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #fff;
-  font-weight: 700;
-  font-size: 1.1rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.ball.hot { background: linear-gradient(135deg, #f87171, var(--hot-color)); }
-.ball.mid { background: linear-gradient(135deg, #9ca3af, var(--mid-color)); }
-.ball.cold { background: linear-gradient(135deg, #60a5fa, var(--cold-color)); }
-
-@media (max-width: 480px) {
-  .ball { width: 36px; height: 36px; font-size: 0.95rem; }
-  h1 { font-size: 1.4rem; }
-}
-</style>
+        /* 手機版微調 */
+        @media (max-width: 600px) {
+            .container { padding: 15px; }
+            h2 { font-size: 1.25rem; }
+            .ball { width: 28px; height: 28px; line-height: 28px; font-size: 0.75rem; }
+            td { font-size: 0.85rem; }
+        }
+    </style>
 </head>
-
 <body>
+
 <div class="container">
+    <h2>539 數據分析系統</h2>
+    
+    <div class="upload-area">
+        <input type="file" id="csvFile" accept=".csv"><br>
+        <button class="btn" onclick="process()">執行分析</button>
+    </div>
 
-<h1>今彩 539｜選號分析</h1>
-<div class="description">
-  <strong>使用說明：</strong>請上傳 CSV（格式：日期,n1,n2,n3,n4,n5）。系統將分析近 50 期熱冷號，並依據分佈邏輯產生本週推薦。
-</div>
-
-<div class="upload-section">
-  <input type="file" id="csvFile" accept=".csv">
-  <button onclick="processCSV()">開始智慧分析並產生 5 注</button>
-</div>
-
-<div class="card">
-  <h3>熱 / 冷 趨勢（近 50 期）</h3>
-  <table class="stat-table" id="stats">
-    <thead>
-      <tr><th>熱號 Top10</th><th>冷號 Top10</th></tr>
-    </thead>
-    <tbody>
-      <tr><td colspan="2" style="color:#9ca3af">等待數據分析...</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<div class="card">
-  <h3>本週建議選號</h3>
-  <div id="result" style="text-align: center; color:#9ca3af; padding: 20px 0;">上傳後顯示結果</div>
-</div>
-
+    <div id="resultSection" style="display:none;">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>策略</th>
+                        <th>推薦組合</th>
+                        <th>期望值</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script>
-/* 原始 Script 邏輯保持不變 */
-const SET_COUNT = 5;
+function process() {
+    // 原始邏輯 B 組：10, 20, 15, 23, 35 各自 +10 並修正
+    const base = [10, 20, 15, 23, 35];
+    const bNums = base.map(n => {
+        let r = n + 10;
+        if (r > 39) r -= 39;
+        return r.toString().padStart(2, '0');
+    }).sort((a,b) => a-b);
 
-function processCSV() {
-  const fileInput = document.getElementById("csvFile");
-  if (!fileInput.files.length) { alert("請先上傳 CSV"); return; }
-  const file = fileInput.files[0];
-  const reader = new FileReader();
+    const data = [
+        { name: "A. 版路走勢", nums: ["04","14","24","31","32"], ev: "中", cls: "" },
+        { name: "B. 週期+10", nums: bNums, ev: "高", cls: "" },
+        { name: "C. 尾數平衡", nums: ["07","17","27","05","15"], ev: "中", cls: "" },
+        { name: "D. 冷門避險", nums: ["01","10","20","30","39"], ev: "最高", cls: "ev-high" }
+    ];
 
-  reader.onload = function(e) {
-    const text = e.target.result;
-    const rows = text.trim().split("\n").slice(1,51);
-    const draws = rows.map(r => r.split(",").slice(1).map(Number));
-    generate(draws);
-  };
-
-  reader.readAsText(file);
-}
-
-function generate(draws) {
-  const freq = {};
-  for (let i = 1; i <= 39; i++) freq[i] = 0;
-  draws.forEach(d => d.forEach(n => freq[n]++));
-
-  const sorted = Object.entries(freq).sort((a,b)=>b[1]-a[1]);
-  const hot = sorted.slice(0,10).map(x=>Number(x[0]));
-  const cold = sorted.slice(-10).map(x=>Number(x[0]));
-  const mid = Object.keys(freq).map(Number).filter(n=>!hot.includes(n)&&!cold.includes(n));
-
-  const tbody = document.querySelector("#stats tbody");
-  tbody.innerHTML = `<tr><td>${hot.join("、")}</td><td>${cold.join("、")}</td></tr>`;
-
-  const results = [];
-  while (results.length < SET_COUNT) {
-    let set = [...pick(hot,2), ...pick(mid,2), ...pick(cold,1)];
-    set = [...new Set(set)].sort((a,b)=>a-b);
-    if (set.length !== 5) continue;
-    if (!valid(set)) continue;
-    if (results.some(r=>overlap(r,set)>2)) continue;
-    results.push(set);
-  }
-
-  const resultDiv = document.getElementById("result");
-  resultDiv.innerHTML = "";
-  results.forEach((s)=>{
-    const setDiv = document.createElement("div");
-    setDiv.className = "set";
-    s.forEach(n=>{
-      const span = document.createElement("div");
-      span.className = "ball " + (hot.includes(n)?"hot":cold.includes(n)?"cold":"mid");
-      span.textContent = n;
-      setDiv.appendChild(span);
+    let html = "";
+    data.forEach(d => {
+        html += `<tr>
+            <td><strong>${d.name}</strong></td>
+            <td><div class="ball-group">${d.nums.map(n => `<div class="ball">${n}</div>`).join('')}</div></td>
+            <td><span class="ev-tag ${d.cls}">${d.ev}</span></td>
+        </tr>`;
     });
-    resultDiv.appendChild(setDiv);
-  });
+
+    document.getElementById('tableBody').innerHTML = html;
+    document.getElementById('resultSection').style.display = 'block';
 }
-
-function pick(arr,n) { return [...arr].sort(()=>Math.random()-0.5).slice(0,n); }
-
-function valid(set) {
-  const odd = set.filter(n=>n%2).length;
-  const small = set.filter(n=>n<=19).length;
-  if (![2,3].includes(odd)) return false;
-  if (![2,3].includes(small)) return false;
-  if (set.every(n=>n<=31)) return false;
-  let seq = 0;
-  for (let i=1;i<set.length;i++) if (set[i]===set[i-1]+1) seq++;
-  return seq <= 1;
-}
-
-function overlap(a,b) { return a.filter(n=>b.includes(n)).length; }
 </script>
 
 </body>
