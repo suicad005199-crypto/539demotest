@@ -97,12 +97,12 @@ const RULES = [
 let HIST_DATA = [];
 
 async function runAll(){
-    const fileInput=document.getElementById("csvFile");
+    const fileInput = document.getElementById("csvFile");
     if(!fileInput.files[0]){ alert("請先選取 CSV 檔案"); return; }
-    const text=await fileInput.files[0].text();
-    HIST_DATA=parseCSV(text);
+    const text = await fileInput.files[0].text();
+    HIST_DATA = parseCSV(text);
     showHistory(HIST_DATA);
-    const stats=doBacktest(HIST_DATA);
+    const stats = doBacktest(HIST_DATA);
     renderStatsTable(stats);
     drawTrendChart(stats.map(s=>s.hit2Rate*100), stats.map(s=>s.hit3Rate*100));
     renderTopCombinations(HIST_DATA, stats);
@@ -110,7 +110,7 @@ async function runAll(){
 }
 
 function parseCSV(text){
-    const lines=text.trim().split("\n");
+    const lines = text.trim().split("\n");
     lines.shift();
     return lines.map(l=>{
         const p=l.split(",");
@@ -124,24 +124,24 @@ function showHistory(data){
         html+=`<tr><td>${d.date.slice(5)}</td><td>${d.nums.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join("")}</td></tr>`;
     });
     html+="</table>";
-    document.getElementById("history").innerHTML=html;
+    document.getElementById("history").innerHTML = html;
 }
 
 function doBacktest(data){
-    const stats=RULES.map(r=>({rule:r, hit5:0, hit4:0, hit3:0, hit2:0, total:0}));
+    const stats = RULES.map(r=>({rule:r, hit5:0, hit4:0, hit3:0, hit2:0, total:0}));
     for(let i=5;i<data.length;i++){
-        const prev=data.slice(i-5,i), actual=data[i].nums;
+        const prev = data.slice(i-5,i), actual = data[i].nums;
         stats.forEach(s=>{
-            const pick=generatePick(prev,s.rule);
-            const hit=countHit(actual,pick);
-            s.total++; if(hit>=2)s.hit2++; if(hit>=3)s.hit3++; if(hit>=4)s.hit4++; if(hit==5)s.hit5++;
+            const pick = generatePick(prev,s.rule);
+            const hit = countHit(actual,pick);
+            s.total++; if(hit>=2) s.hit2++; if(hit>=3) s.hit3++; if(hit>=4) s.hit4++; if(hit==5) s.hit5++;
         });
     }
     stats.forEach(s=>{ 
-        s.hit2Rate=s.hit2/s.total; 
-        s.hit3Rate=s.hit3/s.total;
-        s.hit4Rate=s.hit4/s.total;
-        s.hit5Rate=s.hit5/s.total;
+        s.hit2Rate = s.hit2/s.total; 
+        s.hit3Rate = s.hit3/s.total;
+        s.hit4Rate = s.hit4/s.total;
+        s.hit5Rate = s.hit5/s.total;
     });
     return stats;
 }
@@ -152,13 +152,13 @@ function renderStatsTable(stats){
         html+=`<tr><td><strong>${s.rule.name}</strong></td><td>${(s.hit3Rate*100).toFixed(1)}%</td><td>${(s.hit2Rate*100).toFixed(1)}%</td></tr>`;
     });
     html+="</table>";
-    document.getElementById("stats_table").innerHTML=html;
+    document.getElementById("stats_table").innerHTML = html;
 }
 
 function drawTrendChart(hit2Data, hit3Data){
-    const ctx=document.getElementById("trendChart").getContext("2d");
-    if(window.myChart)window.myChart.destroy();
-    window.myChart=new Chart(ctx,{
+    const ctx = document.getElementById("trendChart").getContext("2d");
+    if(window.myChart) window.myChart.destroy();
+    window.myChart = new Chart(ctx,{
         type:'bar',
         data:{ 
             labels:RULES.map(r=>r.name), 
@@ -183,7 +183,7 @@ function estimateHitRate(pick,data,minHit){
 }
 
 function buildPool(latest5,rule){
-    const pool=new Set();
+    const pool = new Set();
     if(rule.pool.includes("last1")) latest5[4].nums.forEach(n=>pool.add(n));
     if(rule.pool.includes("last5")) latest5.forEach(d=>d.nums.forEach(n=>pool.add(n)));
     [...pool].forEach(n=>{
@@ -193,36 +193,40 @@ function buildPool(latest5,rule){
     return [...pool];
 }
 
-function generatePick(prev,rule){
-    const pool=buildPool(prev,rule);
-    return shuffle(pool).slice(0,5).sort((a,b)=>a-b);
+// --- 核心改動：根據歷史頻率選號，完全固定 ---
+function generatePick(prev, rule){
+    const pool = buildPool(prev, rule);
+    const freq = {};
+    prev.forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
+    const sorted = [...new Set(pool)].sort((a,b)=>(freq[b]||0)-(freq[a]||0));
+    return sorted.slice(0,5).sort((a,b)=>a-b);
 }
 
-function shuffle(arr){ return arr.sort(()=>Math.random()-0.5); }
-
 function renderTopCombinations(data, stats){
-    const resultsDiv=document.getElementById("results");
-    resultsDiv.innerHTML="<h3>智能建議組合</h3>";
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "<h3>智能建議組合</h3>";
 
-    stats.forEach(s=>{
-        const pool=buildPool(data.slice(-5), s.rule);
-        const candidates=[];
-        for(let i=0;i<50;i++){
-            const pick=shuffle(pool).slice(0,5).sort((a,b)=>a-b);
-            const h2=estimateHitRate(pick,data,2);
-            const h3=estimateHitRate(pick,data,3);
-            const h4=estimateHitRate(pick,data,4);
-            const h5=estimateHitRate(pick,data,5);
-            const expected=(h2*0.3 + h3*0.5 + h4*1 + h5*5);
-            candidates.push({pick,h2,h3,h4,h5,expected});
-        }
-        candidates.sort((a,b)=>b.expected-a.expected);
-        const best=candidates[0];
-        const sBlock=document.createElement("div");
-        sBlock.className="strategy-block high-rate";
-        sBlock.innerHTML=`<strong>${s.rule.name}</strong><br>` + 
-            best.pick.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join("") +
-            `<br><span class="rate-badge">期望值: ${(best.expected*100).toFixed(1)}%</span>`;
+    let bestExpected = -1, bestIndex = 0;
+
+    stats.forEach((s, idx)=>{
+        const pick = generatePick(data.slice(-5), s.rule);
+        const h2 = estimateHitRate(pick, data, 2);
+        const h3 = estimateHitRate(pick, data, 3);
+        const h4 = estimateHitRate(pick, data, 4);
+        const h5 = estimateHitRate(pick, data, 5);
+        const expected = h2*0.3 + h3*0.5 + h4*1 + h5*5;
+        s.bestPick = { pick, h2, h3, h4, h5, expected };
+        if(expected>bestExpected){ bestExpected = expected; bestIndex = idx; }
+    });
+
+    stats.forEach((s, idx)=>{
+        const b = s.bestPick;
+        const sBlock = document.createElement("div");
+        sBlock.className = "strategy-block";
+        if(idx===bestIndex) sBlock.classList.add("high-rate");
+        sBlock.innerHTML = `<strong>${s.rule.name}</strong><br>` +
+            b.pick.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join("") +
+            `<br><span class="rate-badge">期望值: ${(b.expected*100).toFixed(1)}%</span>`;
         resultsDiv.appendChild(sBlock);
     });
 }
@@ -235,37 +239,30 @@ function verifyUserPick(){
         if(!isNaN(v) && v>=1 && v<=39) pick.push(v);
     }
     if(pick.length!=5){ alert("請輸入 5 個號碼"); return; }
-    const h2=estimateHitRate(pick,HIST_DATA,2);
-    const h3=estimateHitRate(pick,HIST_DATA,3);
-    const h4=estimateHitRate(pick,HIST_DATA,4);
-    const h5=estimateHitRate(pick,HIST_DATA,5);
-    document.getElementById("userPickResult").innerHTML=
+    const h2 = estimateHitRate(pick,HIST_DATA,2);
+    const h3 = estimateHitRate(pick,HIST_DATA,3);
+    const h4 = estimateHitRate(pick,HIST_DATA,4);
+    const h5 = estimateHitRate(pick,HIST_DATA,5);
+    document.getElementById("userPickResult").innerHTML =
         `中2+命中: ${(h2*100).toFixed(1)}%<br>`+
         `中3+命中: ${(h3*100).toFixed(1)}%<br>`+
         `中4+命中: ${(h4*100).toFixed(1)}%<br>`+
         `中5命中: ${(h5*100).toFixed(1)}%`;
 }
 
-// 熱碼權重生成下期推薦組合
+// --- 下期推薦組合：取熱碼前5 ---
 function renderNextPeriod(data){
-    const resultsDiv=document.getElementById("results");
-    const nextDiv=document.createElement("div");
+    const resultsDiv = document.getElementById("results");
+    const nextDiv = document.createElement("div");
     nextDiv.className="strategy-block";
     nextDiv.innerHTML="<strong>近期趨勢推薦</strong><br>";
 
-    const freq={};
-    data.forEach(d=>d.nums.forEach(n=>{ freq[n]=(freq[n]||0)+1; }));
-    const weightedPool=[];
-    for(const n in freq){
-        for(let i=0;i<freq[n];i++) weightedPool.push(parseInt(n));
-    }
-    const pick=[];
-    while(pick.length<5){
-        const choice=weightedPool[Math.floor(Math.random()*weightedPool.length)];
-        if(!pick.includes(choice)) pick.push(choice);
-    }
-    pick.sort((a,b)=>a-b);
-    nextDiv.innerHTML+=pick.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join("");
+    const freq = {};
+    data.slice(-20).forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
+    const weighted = Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).slice(0,10).map(n=>parseInt(n));
+    const pick = weighted.slice(0,5).sort((a,b)=>a-b);
+
+    nextDiv.innerHTML += pick.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join("");
     resultsDiv.appendChild(nextDiv);
 }
 </script>
