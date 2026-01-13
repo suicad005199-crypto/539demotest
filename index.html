@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>539 QUANT PRO｜命中機率＋熱門號碼（響應式）</title>
+<title>539 QUANT PRO｜命中機率＋熱門號碼（動態資料）</title>
 <style>
 :root{
     --bg:#0f172a;--card:#1e293b;--accent:#38bdf8;
@@ -41,6 +41,7 @@ th{color:var(--accent);}
 .close{float:right;cursor:pointer;font-weight:bold;color:var(--accent);}
 .period-select{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0;}
 .period-select button{flex:1;min-width:60px;}
+.warning{color:#facc15;font-weight:700;margin-top:5px;font-size:.85rem;}
 /* 響應式調整 */
 @media(max-width:768px){
     .ball{width:24px;height:24px;line-height:24px;font-size:.75rem;}
@@ -63,6 +64,7 @@ th{color:var(--accent);}
     <label for="csvFile" id="fileLabel" style="cursor:pointer;color:var(--muted)">Step 1：選擇歷史 CSV</label><br><br>
     <button onclick="runAll()">Step 2：產生牌組＋命中機率</button>
     <button onclick="showModal()">熱門號碼統計</button>
+    <div id="warningMsg" class="warning"></div>
 </div>
 
 <div id="recommend" class="card"><h3>推薦牌組（含命中機率）</h3></div>
@@ -98,7 +100,15 @@ async function runAll(){
     const f=document.getElementById('csvFile').files[0];
     if(!f) return alert('請選 CSV');
     HIST=parseCSV(await f.text());
-    if(HIST.length<60) return alert('至少 60 期資料');
+
+    if(HIST.length<10) return alert('至少需要 10 期資料');
+    const warningDiv = document.getElementById('warningMsg');
+    if(HIST.length<40){
+        warningDiv.innerText='資料量少於 40 期，統計結果可能不穩定';
+    } else {
+        warningDiv.innerText='';
+    }
+
     const base=HIST.slice(0,-1);
     sets=generateSets(base);
     stats=calcSetStats(sets);
@@ -135,7 +145,8 @@ function generateSets(data){
 
 function calcSetStats(sets){
     let res=sets.map(()=>({hit2:0,hit3:0,total:0}));
-    for(let i=40;i<HIST.length;i++){
+    const startIndex = Math.min(40,HIST.length);
+    for(let i=startIndex;i<HIST.length;i++){
         const draw=HIST[i].nums;
         sets.forEach((s,idx)=>{
             const h=s.filter(n=>draw.includes(n)).length;
@@ -154,15 +165,16 @@ function renderRecommend(sets,stats){
         <div class="strategy">
             <strong>策略組 ${i+1}</strong><br><br>
             ${s.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join('')}<br><br>
-            <span class="badge b2">2★ ${(stats[i].hit2/stats[i].total*100).toFixed(1)}%</span>
-            <span class="badge b3">3★ ${(stats[i].hit3/stats[i].total*100).toFixed(1)}%</span>
+            <span class="badge b2">2★ ${(stats[i].total? (stats[i].hit2/stats[i].total*100).toFixed(1) :0)}%</span>
+            <span class="badge b3">3★ ${(stats[i].total? (stats[i].hit3/stats[i].total*100).toFixed(1) :0)}%</span>
         </div>`).join('')}
     `;
 }
 
 function renderBacktest(){
     let h2=0,h3=0,t=0,rows='';
-    for(let i=40;i<HIST.length;i++){
+    const startIndex = Math.min(40,HIST.length);
+    for(let i=startIndex;i<HIST.length;i++){
         const past=HIST.slice(0,i);
         const draw=HIST[i];
         const s=generateSets(past);
@@ -173,8 +185,8 @@ function renderBacktest(){
     }
     document.getElementById('summary').innerHTML=`
         回測期數 ${t}<br>
-        ≥2 星 ${(h2/t*100).toFixed(1)}%<br>
-        ≥3 星 ${(h3/t*100).toFixed(1)}%
+        ≥2 星 ${(t? (h2/t*100).toFixed(1):0)}%<br>
+        ≥3 星 ${(t? (h3/t*100).toFixed(1):0)}%
     `;
     document.getElementById('detail').innerHTML=`
         <div class="table-wrap">
