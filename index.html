@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>539 智能分析系統 - 多策略推薦</title>
+<title>539 智能分析系統 - 下期預測版</title>
 <style>
 :root {
     --primary: #0f172a;
@@ -19,54 +19,47 @@ body {
     background-color: var(--primary);
     color: var(--text);
     margin: 0; padding: 20px;
-    min-height: 100vh; line-height: 1.6;
 }
 
-.container { max-width: 1000px; margin: 0 auto; }
-
+.container { max-width: 1000px; margin:0 auto; }
 header { text-align:center; margin-bottom:30px;}
 header h1 { color: var(--accent); font-size:2.2rem; margin:0; font-weight:900; text-shadow:0 0 20px rgba(56,189,248,0.3);}
 header p { opacity:0.6; font-size:0.85rem; margin:8px 0 0;}
 
-.card {
-    background: var(--card-bg);
-    backdrop-filter: blur(12px);
-    border-radius: 20px;
-    padding: 20px;
-    margin-bottom: 25px;
-}
-
+.card { background: var(--card-bg); padding:20px; margin-bottom:25px; border-radius:20px;}
 .upload-section { border: 2px dashed rgba(56,189,248,0.2); padding:40px 20px; text-align:center; cursor:pointer;}
 .upload-section:hover { border-color: var(--accent); background: rgba(56,189,248,0.05); }
 
-button {
-    width:100%; padding:16px; margin-top:10px;
-    border:none; border-radius:14px;
-    font-weight:800; font-size:1.1rem;
-    background: linear-gradient(135deg, var(--accent), #0284c7);
-    color:white; cursor:pointer; transition:0.3s;
-}
+button { width:100%; padding:16px; margin-top:10px; border:none; border-radius:14px; font-weight:800; font-size:1.1rem; background: linear-gradient(135deg, var(--accent), #0284c7); color:white; cursor:pointer; transition:0.3s;}
 button:hover { transform: translateY(-3px); box-shadow:0 8px 25px rgba(56,189,248,0.5); }
 
-.ball {
-    display:inline-block; width:38px; height:38px; line-height:38px;
-    border-radius:50%; background: radial-gradient(circle at 30% 30%, #475569, #1e293b);
-    margin:4px; font-weight:800; font-size:16px; color: var(--accent);
-    text-align:center;
+.ball { display:inline-block; width:38px; height:38px; line-height:38px; border-radius:50%; background: radial-gradient(circle at 30% 30%, #475569, #1e293b); margin:4px; font-weight:800; font-size:16px; color: var(--accent); text-align:center; }
+
+.strategy-block { margin-bottom: 30px; }
+.strategy-block h3 { color: var(--gold); margin-bottom: 15px; font-size: 1.3rem; }
+
+.result-card {
+    display:flex; justify-content:space-between; align-items:center;
+    background: rgba(56,189,248,0.05); padding:12px 16px; border-radius:16px;
+    margin-bottom:10px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.result-numbers { display:flex; }
+.result-numbers .ball { margin-right:6px; }
+.result-rate span {
+    margin-left:8px; font-size:0.85rem; font-weight:600;
+    background: rgba(255,255,255,0.1); padding:2px 6px; border-radius:6px;
+    color: var(--gold);
 }
 
-.strategy-block h3 { color: var(--gold); margin-bottom:15px; }
-.strategy-block { margin-bottom:25px; }
-.result-line { margin-bottom:8px; }
-.result-line span { margin-left:10px; font-size:0.9rem; opacity:0.8; }
+table { width:100%; border-collapse:collapse; }
+td { padding:10px 5px; text-align:center; border-bottom:1px solid rgba(255,255,255,0.03); font-size:0.9rem; }
 </style>
 </head>
 <body>
-
 <div class="container">
     <header>
         <h1>539 QUANT PRO</h1>
-        <p>多策略智能推薦 • 歷史數據分析</p>
+        <p>多策略下期預測 • 智能推薦</p>
     </header>
 
     <div class="card upload-section" id="uploadSection">
@@ -76,29 +69,23 @@ button:hover { transform: translateY(-3px); box-shadow:0 8px 25px rgba(56,189,24
     </div>
 
     <div id="history" class="card"><h3>近期開獎歷史</h3></div>
-
-    <div id="strategies" class="container"></div>
-
+    <div id="strategies"></div>
 </div>
 
 <script>
 let HIST_DATA = [];
 
-// 上傳文件名稱顯示
 document.getElementById('csvFile').addEventListener('change', function(e){
     const name = e.target.files[0] ? e.target.files[0].name : "點擊選取歷史數據 CSV";
     document.getElementById('fileLabel').innerText = name;
 });
 
-// 主要執行
 async function runAll(){
     const fileInput = document.getElementById("csvFile");
-    if(!fileInput.files[0]){ alert("請先選取 CSV 檔案"); return; }
-
+    if(!fileInput.files[0]){ alert("請先選取 CSV"); return; }
     const text = await fileInput.files[0].text();
     HIST_DATA = parseCSV(text);
-    if(HIST_DATA.length === 0){ alert("CSV 解析失敗"); return; }
-
+    if(HIST_DATA.length===0){ alert("CSV解析失敗"); return; }
     showHistory(HIST_DATA);
     generateAllStrategies(HIST_DATA);
 }
@@ -106,104 +93,122 @@ async function runAll(){
 // CSV解析
 function parseCSV(text){
     const lines = text.trim().split(/\r?\n/);
-    lines.shift(); // 移除標題
+    lines.shift();
     return lines.map(l=>{
         const p = l.split(",");
         if(p.length<6) return null;
         const nums = p.slice(1,6).map(n=>parseInt(n.trim())).sort((a,b)=>a-b);
         if(nums.some(isNaN)) return null;
-        return { date:p[0].trim(), nums: nums };
+        return {date:p[0].trim(), nums:nums};
     }).filter(x=>x!==null).sort((a,b)=> new Date(a.date)-new Date(b.date));
 }
 
 // 顯示歷史
 function showHistory(data){
-    let html = "<table>";
+    let html="<table>";
     data.slice(-5).reverse().forEach(d=>{
-        html += `<tr><td style='opacity:0.6; font-size:0.8rem;'>${d.date}</td><td>${d.nums.map(n=>`<span class='ball'>${String(n).padStart(2,'0')}</span>`).join("")}</td></tr>`;
+        html += `<tr><td style='opacity:0.6'>${d.date}</td><td>${d.nums.map(n=>`<span class='ball'>${String(n).padStart(2,'0')}</span>`).join("")}</td></tr>`;
     });
     html += "</table>";
     document.getElementById("history").innerHTML = "<h3>近期開獎歷史</h3>"+html;
 }
 
-// 生成所有策略
+// 生成策略組合
 function generateAllStrategies(data){
     const container = document.getElementById("strategies");
     container.innerHTML = "";
 
     const strategies = [
-        {name:"熱號策略", func: generateHotStrategy},
-        {name:"冷熱混合策略", func: generateMixedStrategy},
-        {name:"掉落號策略", func: generateDropStrategy}
+        {name:"熱號策略", func:generateHotStrategy},
+        {name:"冷熱混合策略", func:generateMixedStrategy},
+        {name:"掉落號策略", func:generateDropStrategy}
     ];
 
     strategies.forEach(s=>{
         const block = document.createElement("div");
-        block.className = "card strategy-block";
-        block.innerHTML = `<h3>${s.name}</h3>`;
-        const resultsDiv = document.createElement("div");
+        block.className="card strategy-block";
+        block.innerHTML=`<h3>${s.name}</h3>`;
+        const resultsDiv=document.createElement("div");
 
-        // 每個策略生成3組號碼
         for(let i=0;i<3;i++){
             const nums = s.func(data);
-            const rates = simulateHitRate(nums,data);
+            const rates = predictNextRate(nums,data);
+
             const line = document.createElement("div");
-            line.className = "result-line";
-            line.innerHTML = `${nums.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join("")}
-                              <span>2★:${rates[2]}% 3★:${rates[3]}% 4★:${rates[4]}% 5★:${rates[5]}%</span>`;
+            line.className="result-card";
+
+            const numsDiv=document.createElement("div");
+            numsDiv.className="result-numbers";
+            numsDiv.innerHTML = nums.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join("");
+
+            const rateDiv=document.createElement("div");
+            rateDiv.className="result-rate";
+            rateDiv.innerHTML = `2★:${rates[2]}% 3★:${rates[3]}% 4★:${rates[4]}% 5★:${rates[5]}%`;
+
+            line.appendChild(numsDiv);
+            line.appendChild(rateDiv);
             resultsDiv.appendChild(line);
         }
-
         block.appendChild(resultsDiv);
         container.appendChild(block);
     });
 }
 
-// 模擬勝率
-function simulateHitRate(nums,data){
-    const hits = {2:0,3:0,4:0,5:0};
+// 預測下一期勝率
+function predictNextRate(nums,data){
     const last50 = data.slice(-50);
-    last50.forEach(d=>{
-        let match = nums.filter(n=>d.nums.includes(n)).length;
-        if(match>=2) hits[match]++;
-    });
-    // 百分比
-    for(let k in hits) hits[k] = ((hits[k]/last50.length)*100).toFixed(1);
+    const freq = {};
+    last50.forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
+
+    const prob = {};
+    for(let i=1;i<=39;i++){ prob[i]=(freq[i]||0)/50; }
+
+    const N=5000;
+    const hits={2:0,3:0,4:0,5:0};
+    for(let i=0;i<N;i++){
+        const draw=[];
+        while(draw.length<5){
+            const r=Math.random();
+            let cumulative=0;
+            for(let n=1;n<=39;n++){
+                cumulative+=prob[n];
+                if(r<=cumulative && !draw.includes(n)){ draw.push(n); break; }
+            }
+            if(draw.length<5) draw.push(Math.floor(Math.random()*39)+1);
+        }
+        const match=nums.filter(x=>draw.includes(x)).length;
+        if(match>=2 && match<=5) hits[match]++;
+    }
+    for(let k in hits) hits[k]=((hits[k]/N)*100).toFixed(1);
     return hits;
 }
 
-// 策略生成函數
+// 策略函數
 function generateHotStrategy(data){
-    // 取最近50期頻率最高5個號
-    const freq = {};
+    const freq={};
     data.slice(-50).forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
-    const sorted = Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(x=>parseInt(x[0])).slice(0,5);
+    const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(x=>parseInt(x[0])).slice(0,5);
     return shuffle(sorted).slice(0,5);
 }
 
 function generateMixedStrategy(data){
-    const freq = {};
+    const freq={};
     data.slice(-50).forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
-    const sorted = Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(x=>parseInt(x[0]));
-    const hot = sorted.slice(0,3);
-    const cold = sorted.slice(-2);
+    const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]).map(x=>parseInt(x[0]));
+    const hot=sorted.slice(0,3);
+    const cold=sorted.slice(-2);
     return shuffle(hot.concat(cold));
 }
 
 function generateDropStrategy(data){
     if(data.length<2) return generateHotStrategy(data);
-    const lastNums = data[data.length-1].nums;
-    const last50 = data.slice(-50).flatMap(d=>d.nums);
-    const drop = lastNums.filter(n=>!last50.includes(n));
-    let result = drop.slice(0,3);
-    while(result.length<5) result.push(Math.floor(Math.random()*39)+1);
-    return shuffle(result.slice(0,5));
+    const lastNums=data[data.length-1].nums;
+    let result=shuffle(lastNums).slice(0,5);
+    return result;
 }
 
 // 洗牌
-function shuffle(array){
-    return array.sort(()=>Math.random()-0.5);
-}
+function shuffle(array){ return array.sort(()=>Math.random()-0.5); }
 
 </script>
 </body>
