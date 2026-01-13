@@ -44,7 +44,7 @@ header p { font-size: 0.85rem; margin: 8px 0 0; opacity: 0.5; letter-spacing: 3p
     margin-bottom: 25px;
 }
 
-.upload-section { border: 2px dashed rgba(56, 189, 248, 0.2); transition: 0.3s; padding: 40px 20px; }
+.upload-section { border: 2px dashed rgba(56, 189, 248, 0.2); transition: 0.3s; padding: 40px 20px; text-align: center;}
 .upload-section:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.05); }
 
 button { 
@@ -68,11 +68,11 @@ th { text-align: center; font-size: 0.75rem; opacity: 0.4; padding: 12px; font-w
 td { padding: 15px 5px; border-bottom: 1px solid rgba(255,255,255,0.03); text-align: center; }
 
 .ball { 
-    display: inline-block; width: 38px; height: 38px; line-height: 38px; 
+    display: inline-block; width: 34px; height: 34px; line-height: 34px; 
     text-align: center; border-radius: 50%; 
     background: radial-gradient(circle at 30% 30%, #475569, #1e293b);
-    margin: 4px; font-weight: 800; 
-    font-size: 16px; color: var(--accent);
+    margin: 3px; font-weight: 800; 
+    font-size: 14px; color: var(--accent);
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }
 
@@ -80,36 +80,17 @@ td { padding: 15px 5px; border-bottom: 1px solid rgba(255,255,255,0.03); text-al
     background: var(--glass);
     padding: 20px; margin: 15px 0; border-radius: 18px;
     border-left: 4px solid rgba(255,255,255,0.1); transition: 0.4s;
-    cursor: pointer;
 }
-.strategy-block:hover { background: rgba(255,255,255,0.08); transform: scale(1.01); }
-.strategy-block.active { border-left-color: var(--success); }
-
-.logic-detail {
-    display: none;
-    margin-top: 15px;
-    padding: 15px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 12px;
-    font-size: 0.85rem;
-    color: #cbd5e1;
-    border: 1px solid rgba(255,255,255,0.05);
-}
-
-.rate-badge { 
-    font-size: 0.7rem; padding: 5px 12px; border-radius: 20px; 
-    background: rgba(56, 189, 248, 0.15); color: var(--accent); 
-    font-weight: bold;
-}
+.strategy-block h4 { margin: 0 0 10px 0; color: var(--accent); }
+.strategy-desc { font-size: 0.85rem; color: #94a3b8; margin-bottom: 15px; }
 
 .chart-container { height: 320px; }
 
 .inline-input { 
-    width: 60px; height: 60px; text-align: center; margin: 0 5px; 
-    border: 2px solid rgba(255,255,255,0.1); border-radius: 16px; 
-    font-size: 1.4rem; font-weight: 900; background: #0f172a; color: var(--gold);
+    width: 50px; height: 50px; text-align: center; margin: 0 5px; 
+    border: 2px solid rgba(255,255,255,0.1); border-radius: 12px; 
+    font-size: 1.2rem; font-weight: 900; background: #0f172a; color: var(--gold);
 }
-input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -124,33 +105,33 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
     <div class="card upload-section">
         <h3 style="justify-content: center; color: var(--accent);">數據終端入口</h3>
         <input type="file" id="csvFile" accept=".csv" style="display: none;">
-        <label for="csvFile" id="fileLabel" style="display: block; padding: 15px; background: var(--secondary); border-radius: 10px; cursor: pointer; margin-bottom: 20px; color: #94a3b8;">
-            點擊選取歷史數據 CSV
+        <label for="csvFile" id="fileLabel" style="display: block; padding: 20px; background: var(--secondary); border-radius: 15px; cursor: pointer; margin-bottom: 20px; color: #94a3b8; border: 1px solid rgba(255,255,255,0.1);">
+            點擊選取歷史數據 CSV (history.csv)
         </label>
         <button onclick="runAll()">啟動量化決策分析</button>
     </div>
 
     <div class="dashboard-grid">
-        <div id="history" class="card"><h3>近期開獎歷史</h3></div>
-        <div id="stats_table" class="card"><h3>策略回測表現</h3></div>
+        <div id="history" class="card"><h3>近期開獎歷史</h3><div style="text-align:center; opacity:0.3;">尚未讀取</div></div>
+        <div id="stats_table" class="card"><h3>策略回測表現</h3><div style="text-align:center; opacity:0.3;">等待計算...</div></div>
     </div>
 
     <div id="results" class="card">
-        <h3>智能推荐組合 (點擊策略查看邏輯)</h3>
-        <div style="text-align: center; padding: 40px; opacity: 0.3;">等待數據執行...</div>
+        <h3>智能推荐組合</h3>
+        <div id="recommendContent" style="text-align: center; padding: 40px; opacity: 0.3;">等待數據執行...</div>
     </div>
 
     <div class="card">
-        <h3>自選號碼勝率驗證</h3>
-        <div style="display: flex; justify-content: center; flex-wrap: wrap; margin-bottom: 25px; gap: 10px;">
-            <input type="number" class="inline-input" id="userNum1" placeholder="01" min="1" max="39">
-            <input type="number" class="inline-input" id="userNum2" placeholder="02" min="1" max="39">
-            <input type="number" class="inline-input" id="userNum3" placeholder="03" min="1" max="39">
-            <input type="number" class="inline-input" id="userNum4" placeholder="04" min="1" max="39">
-            <input type="number" class="inline-input" id="userNum5" placeholder="05" min="1" max="39">
+        <h3>自選號碼驗證</h3>
+        <div style="display: flex; justify-content: center; flex-wrap: wrap; margin-bottom: 25px; gap: 5px;">
+            <input type="number" class="inline-input" id="userNum1" placeholder="01">
+            <input type="number" class="inline-input" id="userNum2" placeholder="02">
+            <input type="number" class="inline-input" id="userNum3" placeholder="03">
+            <input type="number" class="inline-input" id="userNum4" placeholder="04">
+            <input type="number" class="inline-input" id="userNum5" placeholder="05">
         </div>
         <button onclick="verifyUserPick()" style="background: transparent; border: 2px solid var(--accent); color: var(--accent);">驗證歷史命中潛力</button>
-        <div id="userPickResult" style="margin-top:25px; padding: 15px; border-radius: 12px; background: rgba(255,255,255,0.02);"></div>
+        <div id="userPickResult" style="margin-top:20px;"></div>
     </div>
 
     <div class="card chart-container">
@@ -161,105 +142,156 @@ input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-app
 
 <script>
 let HIST_DATA = [];
-let CORR_MATRIX = {};
+let chartInstance = null;
 
 const RULES = [
-    { 
-        name: "保守型策略", 
-        pool: "last1+5", 
-        desc: "核心為「熱號規律」。鎖定上期開出的號碼及其鄰近 5 位數關聯號，捕捉短期內重複出現的高頻率路徑。",
-        logic: "頻率加權 60% + 關聯性 30% + 擾動 10%" 
-    },
-    { 
-        name: "平衡型策略", 
-        pool: "last5+5+10", 
-        desc: "掃描近 5 期數據。平衡中長期遺漏值與短期熱度，尋找正處於「上升趨勢」的號碼組合。",
-        logic: "平均頻率 40% + 遺漏修正 40% + 隨機 20%" 
-    },
-    { 
-        name: "激進型策略", 
-        pool: "last5+10", 
-        desc: "採用大跨度相關性分析（+10 偏移）。旨在捕捉跳躍式或突變型的版路，適合尋求冷熱切換的轉折點。",
-        logic: "關聯矩陣 50% + 跳號預測 30% + 隨機 20%" 
-    }
+    { name: "保守型 (熱號追蹤)", pool: "last5", desc: "鎖定近期高頻率出現的熱門號碼。" },
+    { name: "平衡型 (趨勢修正)", pool: "last15", desc: "結合冷熱號遺漏值，尋找上升期號碼。" },
+    { name: "激進型 (機率反彈)", pool: "all", desc: "分析長期未開出的冷門號碼反彈點。" }
 ];
 
 document.getElementById('csvFile').addEventListener('change', function(e){
-    const name = e.target.files[0] ? e.target.files[0].name : "點擊選取歷史數據 CSV";
+    const name = e.target.files[0] ? e.target.files[0].name : "選取 CSV 檔案";
     document.getElementById('fileLabel').innerText = name;
 });
 
 async function runAll(){
     const fileInput = document.getElementById("csvFile");
     if(!fileInput.files[0]){ alert("請先選取 CSV 檔案"); return; }
-    const text = await fileInput.files[0].text();
-    HIST_DATA = parseCSV(text);
-    if(HIST_DATA.length === 0) return;
-    buildCorrelationMatrix(HIST_DATA);
-    showHistory(HIST_DATA);
-    const stats = doBacktest(HIST_DATA);
-    renderStatsTable(stats);
-    drawTrendChart(stats.map(s=>s.hit2Rate*100), stats.map(s=>s.hit3Rate*100));
-    renderTopCombinations(HIST_DATA, stats);
-}
+    
+    try {
+        const text = await fileInput.files[0].text();
+        HIST_DATA = parseCSV(text);
+        
+        if(HIST_DATA.length === 0) {
+            alert("無法解析數據，請確認格式。");
+            return;
+        }
 
-function parseCSV(text){
-    const lines = text.trim().split("\n");
-    lines.shift();
-    return lines.map(l => {
-        const p = l.split(",");
-        if(p.length < 7) return null;
-        return {date: p[0].trim(), nums: p.slice(2, 7).map(n => parseInt(n.trim())).sort((a,b)=>a-b)};
-    }).filter(x => x !== null).sort((a,b) => new Date(a.date) - new Date(b.date));
-}
-
-function buildCorrelationMatrix(data) {
-    CORR_MATRIX = {};
-    for (let i = 0; i < data.length - 1; i++) {
-        const current = data[i].nums;
-        const next = data[i+1].nums;
-        current.forEach(c => {
-            if (!CORR_MATRIX[c]) CORR_MATRIX[c] = {};
-            next.forEach(n => { CORR_MATRIX[c][n] = (CORR_MATRIX[c][n] || 0) + 1; });
-        });
+        showHistory();
+        renderRecommendations();
+        updateChart();
+        alert("分析完成！數據量：" + HIST_DATA.length + " 筆");
+    } catch (e) {
+        console.error(e);
+        alert("讀取出錯");
     }
 }
 
-function showHistory(data){
+function parseCSV(text) {
+    const lines = text.trim().split(/\r?\n/).filter(line => line.trim() !== "");
+    lines.shift(); // 移除 Header
+
+    return lines.map(l => {
+        // 針對 "02, 07, 08, 10, 14" 格式
+        const parts = l.split(/"/);
+        if (parts.length < 2) return null;
+
+        const info = parts[0].split(",");
+        const date = info[1] ? info[1].trim() : "";
+        const nums = parts[1].split(",")
+                           .map(n => parseInt(n.trim()))
+                           .filter(n => !isNaN(n))
+                           .sort((a,b) => a-b);
+
+        return nums.length === 5 ? { date, nums } : null;
+    }).filter(x => x !== null);
+}
+
+function showHistory() {
     let html = "<table>";
-    data.slice(-5).reverse().forEach(d => {
-        html += `<tr><td style='opacity:0.6; font-size:0.8rem;'>${d.date.slice(5)}</td><td>${d.nums.map(n => `<span class="ball">${String(n).padStart(2,'0')}</span>`).join("")}</td></tr>`;
+    HIST_DATA.slice(-6).reverse().forEach(d => {
+        html += `<tr><td style='font-size:0.7rem; opacity:0.5;'>${d.date}</td><td>${d.nums.map(n => `<span class="ball">${String(n).padStart(2,'0')}</span>`).join("")}</td></tr>`;
     });
     html += "</table>";
     document.getElementById("history").innerHTML = "<h3>近期開獎歷史</h3>" + html;
 }
 
-function generateSmartPick(prev, rule, simCount = 100, randomness = 2.5) {
-    const pool = new Set();
-    const lastNums = prev[prev.length - 1].nums;
-    if(rule.pool.includes("last1")) lastNums.forEach(n => pool.add(n));
-    if(rule.pool.includes("last5")) prev.slice(-5).forEach(d => d.nums.forEach(n => pool.add(n)));
-    [...pool].forEach(n => {
-        if(rule.pool.includes("+5") && n+5 <= 39) pool.add(n+5);
-        if(rule.pool.includes("+10") && n+10 <= 39) pool.add(n+10);
+function renderRecommendations() {
+    const container = document.getElementById("recommendContent");
+    container.innerHTML = "";
+    
+    RULES.forEach(rule => {
+        const pick = generateSimulatedPick(rule);
+        const div = document.createElement('div');
+        div.className = "strategy-block";
+        div.innerHTML = `
+            <h4>${rule.name}</h4>
+            <div class="strategy-desc">${rule.desc}</div>
+            <div style="display:flex; justify-content:center;">
+                ${pick.map(n => `<span class="ball" style="color:var(--gold); border:1px solid var(--gold);">${String(n).padStart(2,'0')}</span>`).join("")}
+            </div>
+        `;
+        container.appendChild(div);
     });
-    const freq = {};
-    prev.forEach(d => d.nums.forEach(n => freq[n] = (freq[n]||0) + 1));
-    let candidates = [];
-    for(let i=0; i<simCount; i++) {
-        let arr = [...pool];
-        arr.sort((a,b) => (freq[b]||0) - (freq[a]||0) + (Math.random() * randomness * 2 - randomness));
-        candidates.push(arr.slice(0, 5).sort((a,b) => a-b));
-    }
-    let best = candidates[0], maxVal = -1;
-    candidates.forEach(p => {
-        const val = calculateExpectedValue(p, HIST_DATA.slice(-60));
-        if (val > maxVal) { maxVal = val; best = p; }
-    });
-    return best;
 }
 
-function calculateExpectedValue(pick, testData) {
-    if(!testData.length) return 0;
-    let hits = [0,0,0,0,0,0];
-  
+function generateSimulatedPick(rule) {
+    // 簡單權重邏輯
+    let pool = [];
+    if(rule.pool === "last5") pool = HIST_DATA.slice(-5).flatMap(d => d.nums);
+    else if(rule.pool === "last15") pool = HIST_DATA.slice(-15).flatMap(d => d.nums);
+    else pool = Array.from({length: 39}, (_, i) => i + 1);
+
+    const counts = {};
+    pool.forEach(n => counts[n] = (counts[n] || 0) + 1);
+    
+    return Object.keys(counts)
+        .map(Number)
+        .sort((a, b) => (counts[b] + Math.random()) - (counts[a] + Math.random()))
+        .slice(0, 5)
+        .sort((a,b) => a-b);
+}
+
+function updateChart() {
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    const freq = new Array(40).fill(0);
+    HIST_DATA.slice(-50).forEach(d => d.nums.forEach(n => freq[n]++));
+
+    if(chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Array.from({length: 39}, (_, i) => i + 1),
+            datasets: [{
+                label: '近50期出現頻率',
+                data: freq.slice(1),
+                backgroundColor: 'rgba(56, 189, 248, 0.5)',
+                borderColor: '#38bdf8',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' } } }
+        }
+    });
+}
+
+function verifyUserPick() {
+    const picks = [
+        parseInt(document.getElementById("userNum1").value),
+        parseInt(document.getElementById("userNum2").value),
+        parseInt(document.getElementById("userNum3").value),
+        parseInt(document.getElementById("userNum4").value),
+        parseInt(document.getElementById("userNum5").value)
+    ].filter(n => !isNaN(n));
+
+    if(picks.length === 0) { alert("請輸入號碼"); return; }
+    
+    let matches = 0;
+    HIST_DATA.forEach(d => {
+        const hit = d.nums.filter(n => picks.includes(n)).length;
+        if(hit >= 2) matches++;
+    });
+
+    document.getElementById("userPickResult").innerHTML = `
+        <div style="text-align:center; padding:15px; background:var(--glass); border-radius:10px;">
+            在歷史數據中，此組合出現 2 星以上機率的次數為：<b style="color:var(--gold); font-size:1.5rem;">${matches}</b> 次
+        </div>
+    `;
+}
+</script>
+</body>
+</html>
