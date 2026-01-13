@@ -2,201 +2,177 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>539 Advanced Tactical Center</title>
+    <title>539 Strategy AI: Dynamic Heatmap</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --bg: #020617; --card: #0f172a; --accent: #38bdf8; --hot: #ef4444; --cold: #3b82f6; --gold: #fbbf24; --success: #22c55e; }
-        body { margin: 0; background: var(--bg); color: #f1f5f9; font-family: system-ui, sans-serif; padding: 10px; font-size: 14px; }
-        .dashboard { max-width: 1300px; margin: 0 auto; display: grid; grid-template-columns: 1fr 420px; gap: 12px; }
-        .panel { background: var(--card); border-radius: 12px; padding: 16px; border: 1px solid #1e293b; }
+        :root { --bg: #030712; --card: #111827; --accent: #38bdf8; --hot: #ef4444; --gold: #fbbf24; --success: #10b981; --con: #8b5cf6; }
+        body { margin: 0; background: var(--bg); color: #f1f5f9; font-family: system-ui, sans-serif; padding: 10px; font-size: 13px; }
+        .dashboard { max-width: 1600px; margin: 0 auto; display: grid; grid-template-columns: 1fr 520px; gap: 12px; }
+        .panel { background: var(--card); border-radius: 12px; padding: 16px; border: 1px solid #1f2937; }
         .full { grid-column: 1 / -1; }
         
-        /* 圖表 */
-        .chart-box { height: 260px; margin-top: 10px; }
+        /* 視覺看板 */
+        .chart-box { height: 220px; margin-top: 10px; }
 
-        /* 球盤分級與推薦 */
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; }
+        /* 動態球盤 */
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 10px; }
         .ball { 
-            aspect-ratio: 1; border-radius: 10px; display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;
-            position: relative; overflow: hidden; background: #1e293b; border: 2px solid transparent;
+            aspect-ratio: 1; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            cursor: pointer; transition: 0.3s; position: relative; background: #1f2937; border: 1px solid #374151; overflow: hidden;
         }
-        .ball .num { font-size: 18px; font-weight: 800; z-index: 2; }
-        .ball .rank-badge { position: absolute; top: 2px; left: 2px; font-size: 8px; padding: 1px 3px; border-radius: 3px; z-index: 3; color: white; font-weight: bold; }
-        .ball .meta { font-size: 8px; opacity: 0.7; z-index: 2; }
-        .ball.selected { border-color: #fff; transform: scale(0.92); box-shadow: 0 0 10px rgba(255,255,255,0.3); }
-
-        /* 回測日誌 */
-        .bt-box { background: #000; color: var(--success); font-family: monospace; padding: 10px; border-radius: 6px; font-size: 12px; height: 120px; overflow-y: auto; margin-top: 10px; }
+        .ball .num { font-size: 20px; font-weight: 900; z-index: 2; transition: 0.3s; }
+        .ball:hover .num { transform: scale(1.2); }
         
-        /* 控制區 */
-        .row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        select, input { background: #020617; color: #fff; border: 1px solid #334155; padding: 4px 8px; border-radius: 6px; }
-        .btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; margin-bottom: 6px; }
-        .btn-ai { background: linear-gradient(135deg, #0ea5e9, #6366f1); color: white; }
-        .btn-test { background: transparent; border: 1px solid var(--success); color: var(--success); }
+        /* 熱度與漏期動畫漸層 */
+        .heat-bg { position: absolute; inset: 0; opacity: 0.2; transition: 0.5s; }
+        .gap-pulse { position: absolute; bottom: 0; left: 0; height: 4px; background: var(--accent); transition: width 1s ease-in-out; }
+        .con-glow { position: absolute; right: 0; top: 0; width: 4px; height: 100%; background: var(--con); opacity: 0.5; }
 
-        #result { margin-top: 10px; font-family: monospace; color: #4ade80; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; display: none; }
+        /* 方案分級列表 */
+        .plan-card { background: #1e293b; padding: 12px; border-radius: 10px; border: 1px solid #334155; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .plan-nums { display: flex; gap: 5px; }
+        .p-num { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; background: #0f172a; }
+        .p-num.hot { border: 1px solid var(--hot); color: var(--hot); }
+        
+        .score-box { text-align: right; }
+        .rank-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        
+        .btn-ai { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--accent), var(--con)); border: none; color: white; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="dashboard">
     <div class="panel full">
-        <div class="row">
-            <h3 style="margin:0">戰略看板 (和值線 + 奇偶柱 + 連號散點)</h3>
-            <input type="file" onchange="handleFile(this)">
+        <div style="display:flex; justify-content:space-between; align-items:center">
+            <h3 style="margin:0">戰略指揮中心 (和值趨勢與熱點回測)</h3>
+            <input type="file" onchange="init(this)">
         </div>
         <div class="chart-box"><canvas id="mainChart"></canvas></div>
-        <div id="bt-log" class="bt-box">等待數據讀取以執行回測...</div>
     </div>
 
     <div class="panel">
-        <div class="row">
-            <b>AI 推薦級別與連號潛力</b>
-            <span id="sel-info" style="font-size:12px; color:var(--gold)">未選號</span>
+        <div style="display:flex; justify-content:space-between; margin-bottom:12px">
+            <b>動態權重球盤 (底條:漏期 | 背景:命中熱度)</b>
+            <span id="ai-status" style="color:var(--gold)">等待數據...</span>
         </div>
         <div id="grid" class="grid"></div>
     </div>
 
     <div class="panel">
-        <h3 style="margin:0; margin-bottom:12px">AI 策略選號生成</h3>
-        <div class="row"><span>奇偶比例</span><select id="p-oe"><option value="any">不限</option><option value="3:2">3奇:2偶</option><option value="2:3">2奇:3偶</option></select></div>
-        <div class="row"><span>大小比例</span><select id="p-bs"><option value="any">不限</option><option value="3:2">3大:2小</option><option value="2:3">2大:3小</option></select></div>
-        <div class="row"><span>連號要求</span><select id="p-con"><option value="any">不限</option><option value="yes">必須包含</option><option value="no">排除連號</option></select></div>
-        <div class="row"><span>和值區間</span><span><input type="number" id="p-min" value="80" style="width:40px">-<input type="number" id="p-max" value="125" style="width:40px"></span></div>
-        <div class="row"><span>回測深度</span><select id="p-bt-depth"><option value="10">最近 10 期</option><option value="30">最近 30 期</option><option value="50">最近 50 期</option></select></div>
-        
-        <button class="btn btn-ai" onclick="generateAI()">執行策略生成</button>
-        <button class="btn btn-test" onclick="runBacktest()">執行深度回測</button>
-        <div id="result"></div>
+        <h3 style="margin:0">AI 策略生成 (附穩定性評分)</h3>
+        <button class="btn-ai" onclick="generateTactics()">執行多組策略生成與方案驗證</button>
+        <div id="plan-list"></div>
     </div>
 </div>
 
 <script>
-    let raw = [], stats = { freq: {}, gap: {}, scores: {}, last: [] }, selected = new Set(), chart;
+    let db = [], scores = {}, stats = { freq: {}, gap: {}, con: {} }, chart;
 
-    function handleFile(input) {
+    function init(input) {
         const reader = new FileReader();
         reader.onload = (e) => {
-            const lines = e.target.result.split('\n').filter(l => l.trim() !== "").slice(1);
-            stats.freq = {}; stats.gap = {}; for(let i=1; i<=39; i++) stats.gap[i] = lines.length;
-            
-            raw = lines.map((l, idx) => {
+            const lines = e.target.result.trim().split('\n').slice(1);
+            stats.freq = {}; stats.gap = {}; stats.con = {};
+            for(let i=1; i<=39; i++) stats.gap[i] = lines.length;
+
+            db = lines.map((l, idx) => {
                 const c = l.split(',');
                 const nums = c.slice(1,6).map(Number).sort((a,b)=>a-b);
-                if(idx === 0) stats.last = nums;
-                nums.forEach(n => {
+                nums.forEach((n, i) => {
                     stats.freq[n] = (stats.freq[n]||0)+1;
                     if(stats.gap[n] > idx) stats.gap[n] = idx;
+                    if(i > 0 && nums[i]-nums[i-1] === 1) stats.con[n] = (stats.con[n]||0)+1;
                 });
-                return { date: c[0].slice(5), nums, sum: nums.reduce((a,b)=>a+b,0), odd: nums.filter(n=>n%2!==0).length, con: nums.some((n,i)=> n === nums[i-1]+1) };
+                return { date: c[0].slice(5), nums, sum: nums.reduce((a,b)=>a+b,0) };
             }).reverse();
 
-            updateScores();
-            renderChart();
+            calcAI();
             renderGrid();
-            runBacktest();
+            renderChart();
         };
         reader.readAsText(input.files[0]);
     }
 
-    function updateScores() {
-        // AI 權重算法優化：近期熱度 + 長期遺漏補償
+    function calcAI() {
         for(let i=1; i<=39; i++) {
-            stats.scores[i] = (stats.freq[i]||0)*1.2 + (stats.gap[i]||0)*0.8;
+            scores[i] = (stats.freq[i]||0)*2 + (stats.gap[i]||0)*1.5 + (stats.con[i]||0)*1.2;
         }
+        document.getElementById('ai-status').innerText = `✅ AI 權重已更新`;
     }
 
     function renderGrid() {
         const grid = document.getElementById('grid'); grid.innerHTML = '';
-        const sorted = Object.entries(stats.scores).sort((a,b)=>b[1]-a[1]);
+        const maxFreq = Math.max(...Object.values(stats.freq)), maxGap = Math.max(...Object.values(stats.gap));
 
         for(let i=1; i<=39; i++) {
             const ball = document.createElement('div');
-            const rank = sorted.findIndex(x => x[0] == i) + 1;
-            let level = '', color = '#1e293b';
+            const heat = (stats.freq[i]/maxFreq);
+            const gapPer = (stats.gap[i]/maxGap)*100;
             
-            if(rank <= 3) { level = `TOP${rank}`; color = '#ef4444'; }
-            else if(rank <= 10) { level = '推薦'; color = '#fbbf24'; }
-
-            ball.className = `ball ${selected.has(i) ? 'selected' : ''}`;
+            ball.className = 'ball';
             ball.innerHTML = `
-                ${level ? `<div class="rank-badge" style="background:${color}">${level}</div>` : ''}
+                <div class="heat-bg" style="background:var(--hot); opacity:${heat * 0.5}"></div>
+                <div class="gap-pulse" style="width:${gapPer}%"></div>
+                ${stats.con[i] ? `<div class="con-glow"></div>` : ''}
                 <span class="num">${String(i).padStart(2,'0')}</span>
-                <span class="meta">漏${stats.gap[i]||0} | 開${stats.freq[i]||0}</span>
-                <div style="position:absolute; bottom:0; width:100%; height:4px; background:hsla(200, 70%, 50%, ${rank < 15 ? 0.8 : 0.2})"></div>
+                <span style="font-size:8px; opacity:0.5; z-index:2">開:${stats.freq[i]}|漏:${stats.gap[i]}</span>
             `;
-            ball.onclick = () => {
-                if(selected.has(i)) selected.delete(i); else if(selected.size < 5) selected.add(i);
-                updateInfo(); renderGrid();
-            };
             grid.appendChild(ball);
         }
     }
 
-    function runBacktest() {
-        const depth = parseInt(document.getElementById('p-bt-depth').value);
-        const log = document.getElementById('bt-log');
-        log.innerHTML = `⚙️ 執行 ${depth} 期深度回測中...<br>`;
-        let totalHits = 0;
-        
-        const testData = raw.slice(-depth);
-        testData.forEach(d => {
-            const top10 = Object.entries(stats.scores).sort((a,b)=>b[1]-a[1]).slice(0, 10).map(x=>Number(x[0]));
-            const hits = d.nums.filter(n => top10.includes(n));
-            totalHits += hits.length;
-        });
-
-        log.innerHTML += `✅ 回測完成<br>📊 平均每期命中: ${(totalHits/depth).toFixed(2)} 碼 (採 Top 10 推薦號)<br>`;
-        log.innerHTML += `🎯 命中率分佈: ${((totalHits/(depth*5))*100).toFixed(1)}%`;
-    }
-
-    function generateAI() {
-        const qty = 3; let results = [], attempts = 0;
-        const conf = { oe: document.getElementById('p-oe').value, bs: document.getElementById('p-bs').value, con: document.getElementById('p-con').value, min: parseInt(document.getElementById('p-min').value), max: parseInt(document.getElementById('p-max').value) };
+    function generateTactics() {
+        const list = document.getElementById('plan-list'); list.innerHTML = '';
+        const top10 = Object.entries(scores).sort((a,b)=>b[1]-a[1]).slice(0, 10).map(x=>Number(x[0]));
         
         let pool = [];
-        Object.entries(stats.scores).forEach(([n, s]) => { for(let k=0; k<Math.floor(s); k++) pool.push(Number(n)); });
+        Object.entries(scores).forEach(([n, s]) => { for(let k=0; k<Math.floor(s); k++) pool.push(Number(n)); });
 
-        while(results.length < qty && attempts < 10000) {
-            attempts++;
+        let results = [];
+        for(let g=0; g<5; g++) {
             let temp = new Set();
             while(temp.size < 5) temp.add(pool[Math.floor(Math.random()*pool.length)]);
             let arr = Array.from(temp).sort((a,b)=>a-b);
-            const sum = arr.reduce((a,b)=>a+b), o = arr.filter(n=>n%2!==0).length, b = arr.filter(n=>n>=20).length, c = arr.some((n,i)=> n === arr[i-1]+1);
             
-            if(attempts === 5000) { conf.min -= 10; conf.max += 10; } // 自動放寬
-
-            if((conf.oe === 'any' || conf.oe === `${o}:${5-o}`) && (conf.bs === 'any' || conf.bs === `${b}:${5-b}`) && (sum >= conf.min && sum <= conf.max) && (conf.con === 'any' || (conf.con === 'yes' ? c : !c))) {
-                results.push(arr.map(n=>String(n).padStart(2,'0')).join(' '));
-            }
+            // 穩定性計算 (10/30/50期命中率)
+            const depths = [10, 30, 50];
+            const hits = depths.map(d => {
+                let h = 0;
+                db.slice(-d).forEach(past => h += past.nums.filter(n => arr.includes(n)).length);
+                return (h / d).toFixed(2);
+            });
+            const stability = (hits[0]*0.5 + hits[1]*0.3 + hits[2]*0.2).toFixed(2);
+            results.push({ arr, hits, stability });
         }
-        const resBox = document.getElementById('result'); resBox.style.display = 'block';
-        resBox.innerText = `[策略生成推薦]\n` + results.map((r,i)=>`方案 ${i+1}: ${r}`).join('\n');
+
+        results.sort((a,b) => b.stability - a.stability).forEach((res, i) => {
+            const card = document.createElement('div');
+            card.className = 'plan-card';
+            card.innerHTML = `
+                <div>
+                    <div class="plan-nums">${res.arr.map(n => `<div class="p-num ${top10.includes(n)?'hot':''}">${String(n).padStart(2,'0')}</div>`).join('')}</div>
+                    <div style="font-size:10px; color:#94a3b8; margin-top:5px">核心號佔比: ${res.arr.filter(n=>top10.includes(n)).length}/5</div>
+                </div>
+                <div class="score-box">
+                    <span class="rank-tag" style="background:${i===0? 'var(--gold)':'#334155'}; color:#000">${i===0? '最穩定推薦':'方案 '+(i+1)}</span>
+                    <div style="color:var(--success); font-weight:bold; margin-top:4px">評分: ${res.stability}</div>
+                    <div style="font-size:9px; opacity:0.5">10期命中: ${res.hits[0]}</div>
+                </div>
+            `;
+            list.appendChild(card);
+        });
     }
 
     function renderChart() {
         const ctx = document.getElementById('mainChart').getContext('2d');
         if(chart) chart.destroy();
-        const data = raw.slice(-30);
+        const data = db.slice(-25);
         chart = new Chart(ctx, {
-            data: {
-                labels: data.map(d => d.date),
-                datasets: [
-                    { type: 'line', label: '和值', data: data.map(d=>d.sum), borderColor: '#fbbf24', yAxisID: 'y' },
-                    { type: 'bar', label: '奇數數', data: data.map(d=>d.odd), backgroundColor: 'rgba(239, 68, 68, 0.4)', yAxisID: 'y1' },
-                    { type: 'scatter', label: '連號期', data: data.map((d,i)=> d.con ? {x: d.date, y: 5.5} : null), backgroundColor: '#fff', yAxisID: 'y1' }
-                ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y1: { position: 'right', max: 6 } } }
+            type: 'line',
+            data: { labels: data.map(d=>d.date), datasets: [{ label: '和值趨勢', data: data.map(d=>d.sum), borderColor: '#fbbf24', tension: 0.3, fill: true, backgroundColor: 'rgba(251, 191, 36, 0.1)' }] },
+            options: { responsive: true, maintainAspectRatio: false }
         });
-    }
-
-    function updateInfo() {
-        const arr = Array.from(selected);
-        document.getElementById('sel-info').innerText = `選 ${arr.length} | 均值 ${arr.length ? (arr.reduce((a,b)=>a+b)/arr.length).toFixed(1) : 0}`;
     }
 </script>
 </body>
