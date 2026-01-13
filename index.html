@@ -2,230 +2,264 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>539 QUANT PRO｜下期預測版</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>539 智能分析系統 - Pro 量化決策版</title>
 <style>
-:root{
-  --bg:#0f172a;--card:#1e293b;--accent:#38bdf8;
-  --gold:#fbbf24;--text:#f1f5f9;--muted:#94a3b8;
+:root {
+    --primary: #0f172a;
+    --secondary: #1e293b;
+    --accent: #38bdf8;
+    --gold: #fbbf24;
+    --success: #22c55e;
+    --error: #ef4444;
+    --bg: #0f172a;
+    --card-bg: rgba(30, 41, 59, 0.7);
+    --text: #f1f5f9;
+    --glass: rgba(255, 255, 255, 0.03);
 }
-body{margin:0;padding:20px;background:radial-gradient(circle at 50% 0%,#1e293b,#0f172a);font-family:'PingFang TC',sans-serif;color:var(--text);}
-.container{max-width:1200px;margin:auto;}
-.card{background:rgba(30,41,59,.75);border-radius:16px;padding:16px;margin-bottom:20px;border:1px solid rgba(255,255,255,.08);}
-button{padding:12px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#0284c7);color:#fff;font-weight:700;border:none;cursor:pointer;font-size:1rem;margin-top:5px;width:100%;}
-.ball{display:inline-block;width:28px;height:28px;line-height:28px;border-radius:50%;margin:2px;text-align:center;background:radial-gradient(circle at 30% 30%,#475569,#1e293b);color:var(--gold);font-weight:800;font-size:.85rem;}
-.strategy-card{display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.05);padding:12px;margin-bottom:10px;border-radius:12px;border-left:4px solid var(--accent);}
-.ball-container{display:flex;flex-wrap:wrap;gap:4px;}
-.stats-container{display:flex;flex-direction:column;gap:4px;text-align:right;}
-.badge{display:inline-block;padding:2px 6px;border-radius:6px;font-size:.75rem;font-weight:700;margin:2px 0;}
-.b2{background:#0284c7;color:#cffafe;}
-.b3{background:#f59e0b;color:#fff7ed;}
-.b2-pred{background:#0ea5e9;color:#e0f2fe;}
-.b3-pred{background:#f97316;color:#fff7ed;}
-.table-wrap{overflow-x:auto;}
-table{width:100%;border-collapse:collapse;font-size:.8rem;}
-th,td{padding:6px;text-align:center;border-bottom:1px solid rgba(255,255,255,.05);}
-th{color:var(--accent);}
-.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);justify-content:center;align-items:center;z-index:10;}
-.modal-content{background:var(--card);padding:20px;border-radius:16px;max-width:90%;width:400px;max-height:90%;overflow-y:auto;}
-.close{float:right;cursor:pointer;font-weight:bold;color:var(--accent);}
-.period-select{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0;}
-.period-select button{flex:1;min-width:60px;}
-.warning{color:#facc15;font-weight:700;margin-top:5px;font-size:.85rem;}
-.chart-container{height:250px;margin-top:10px;}
-@media(max-width:768px){.ball{width:24px;height:24px;line-height:24px;font-size:.75rem;}button{font-size:.95rem;padding:10px;}.strategy-card{flex-direction:column;align-items:flex-start;padding:10px;}.stats-container{text-align:left;}}
-@media(max-width:480px){.ball{width:22px;height:22px;line-height:22px;font-size:.7rem;}button{font-size:.9rem;padding:8px;}table{font-size:.65rem;}}
+
+body { 
+    font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; 
+    background-color: var(--bg);
+    background-image: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
+    margin: 0; padding: 20px 15px; color: var(--text);
+    min-height: 100vh; line-height: 1.6;
+}
+
+.container { max-width: 1000px; margin: 0 auto; }
+
+header { text-align: center; margin-bottom: 30px; padding: 10px 0; }
+header h1 { 
+    font-size: 2.2rem; margin: 0; color: var(--accent); font-weight: 900; 
+    text-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+    letter-spacing: 2px;
+}
+header p { font-size: 0.85rem; margin: 8px 0 0; opacity: 0.5; letter-spacing: 3px; font-weight: 300; }
+
+.card { 
+    background: var(--card-bg); 
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 24px; border-radius: 24px; 
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    margin-bottom: 25px;
+}
+
+.upload-section { border: 2px dashed rgba(56, 189, 248, 0.2); transition: 0.3s; padding: 40px 20px; text-align: center; }
+.upload-section:hover { border-color: var(--accent); background: rgba(56, 189, 248, 0.05); }
+
+button { 
+    background: linear-gradient(135deg, var(--accent), #0284c7);
+    color: white; border: none; padding: 16px 30px; 
+    border-radius: 14px; font-weight: 800; font-size: 1.1rem;
+    cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+    width: 100%; letter-spacing: 1px;
+}
+button:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(56, 189, 248, 0.5); }
+
+.dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+@media (min-width: 768px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } }
+
+h3 { font-size: 1.2rem; margin-top: 0; margin-bottom: 20px; color: var(--gold); display: flex; align-items: center; font-weight: 700; }
+h3::before { content: ''; display: inline-block; width: 4px; height: 20px; background: var(--gold); margin-right: 12px; border-radius: 2px; }
+
+table { width: 100%; border-collapse: collapse; }
+th { text-align: center; font-size: 0.75rem; opacity: 0.4; padding: 12px; font-weight: normal; }
+td { padding: 15px 5px; border-bottom: 1px solid rgba(255,255,255,0.03); text-align: center; }
+
+.ball { 
+    display: inline-block; width: 38px; height: 38px; line-height: 38px; 
+    text-align: center; border-radius: 50%; 
+    background: radial-gradient(circle at 30% 30%, #475569, #1e293b);
+    margin: 4px; font-weight: 800; 
+    font-size: 16px; color: var(--accent);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.strategy-block { 
+    background: var(--glass);
+    padding: 20px; margin: 15px 0; border-radius: 18px;
+    border-left: 4px solid rgba(255,255,255,0.1); transition: 0.4s;
+    cursor: pointer;
+}
+.strategy-block:hover { background: rgba(255,255,255,0.08); transform: scale(1.01); }
+.strategy-block.active { border-left-color: var(--success); }
+
+.logic-detail {
+    display: none;
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+
+.rate-badge { 
+    font-size: 0.7rem; padding: 5px 12px; border-radius: 20px; 
+    background: rgba(56, 189, 248, 0.15); color: var(--accent); 
+    font-weight: bold;
+}
+
+.chart-container { height: 320px; }
+
+.inline-input { 
+    width: 60px; height: 60px; text-align: center; margin: 0 5px; 
+    border: 2px solid rgba(255,255,255,0.1); border-radius: 16px; 
+    font-size: 1.4rem; font-weight: 900; background: #0f172a; color: var(--gold);
+}
+input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.cold-tag { background: rgba(239, 68, 68, 0.15); color: var(--error); padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: bold; }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+
 <div class="container">
+    <header>
+        <h1>539 QUANT PRO</h1>
+        <p>ADVANCED ANALYTICS • DATA DRIVEN</p>
+    </header>
 
-<div class="card">
-  <input type="file" id="csvFile" accept=".csv" hidden>
-  <label for="csvFile" id="fileLabel" style="cursor:pointer;color:var(--muted)">Step 1：選擇歷史 CSV</label><br><br>
-  <button onclick="runAll()">Step 2：產生牌組＋命中機率</button>
-  <button onclick="showModal()">熱門號碼統計</button>
-  <div id="warningMsg" class="warning"></div>
-</div>
-
-<div id="recommend" class="card"><h3>推薦牌組（含命中率 + 下期預測）</h3></div>
-<div id="summary" class="card"><h3>回測總覽</h3><canvas id="trendChart" class="chart-container"></canvas></div>
-<div id="detail" class="card"><h3>單期詳細命中紀錄</h3></div>
-
-<!-- Modal -->
-<div id="hotModal" class="modal">
-  <div class="modal-content">
-    <span class="close" onclick="hideModal()">&times;</span>
-    <h3>熱門號碼統計</h3>
-    <div class="period-select">
-      <button onclick="updateHotNumbers(10)">近 10 期</button>
-      <button onclick="updateHotNumbers(20)">近 20 期</button>
-      <button onclick="updateHotNumbers(30)">近 30 期</button>
+    <div class="card upload-section">
+        <h3 style="justify-content: center; color: var(--accent);">數據終端入口</h3>
+        <input type="file" id="csvFile" accept=".csv" style="display: none;">
+        <label for="csvFile" id="fileLabel" style="display: block; padding: 15px; background: var(--secondary); border-radius: 10px; cursor: pointer; margin-bottom: 20px; color: #94a3b8;">
+            點擊選取歷史數據 CSV
+        </label>
+        <button onclick="runAll()">啟動量化決策分析</button>
     </div>
-    <p id="hotInfo" style="opacity:0.7;font-size:0.85rem"></p>
-    <div class="chart-container"><canvas id="hotChart"></canvas></div>
-    <div class="table-wrap">
-      <table id="hotTable"><tr><th>號碼</th><th>出現次數</th></tr></table>
-    </div>
-  </div>
-</div>
 
+    <div id="coldRankSection" class="card" style="display:none;">
+        <h3>⚠️ 目前極冷號排行榜 (遺漏期數)</h3>
+        <div id="coldList" style="display: flex; justify-content: space-around; flex-wrap: wrap;"></div>
+    </div>
+
+    <div class="dashboard-grid">
+        <div id="history" class="card"><h3>近期開獎歷史</h3></div>
+        <div id="stats_table" class="card"><h3>策略回測表現</h3></div>
+    </div>
+
+    <div id="results" class="card">
+        <h3>智能推荐組合 (點擊策略查看邏輯)</h3>
+        <div style="text-align: center; padding: 40px; opacity: 0.3;">等待數據執行...</div>
+    </div>
+
+    <div class="card">
+        <h3>自選號碼勝率驗證</h3>
+        <div style="display: flex; justify-content: center; flex-wrap: wrap; margin-bottom: 25px; gap: 10px;">
+            <input type="number" class="inline-input" id="userNum1" placeholder="01" min="1" max="39">
+            <input type="number" class="inline-input" id="userNum2" placeholder="02" min="1" max="39">
+            <input type="number" class="inline-input" id="userNum3" placeholder="03" min="1" max="39">
+            <input type="number" class="inline-input" id="userNum4" placeholder="04" min="1" max="39">
+            <input type="number" class="inline-input" id="userNum5" placeholder="05" min="1" max="39">
+        </div>
+        <button onclick="verifyUserPick()" style="background: transparent; border: 2px solid var(--accent); color: var(--accent);">驗證歷史命中潛力</button>
+        <div id="userPickResult" style="margin-top:25px; padding: 15px; border-radius: 12px; background: rgba(255,255,255,0.02);"></div>
+    </div>
+
+    <div class="card chart-container">
+        <h3>機率分佈趨勢</h3>
+        <canvas id="trendChart"></canvas>
+    </div>
 </div>
 
 <script>
-// ===== CSV 處理模組 =====
-let HIST=[];
+let HIST_DATA = [];
+let CORR_MATRIX = {};
+
+const RULES = [
+    { 
+        name: "保守型策略", 
+        pool: "hot", 
+        desc: "核心為「熱號規律」。鎖定上期開出的號碼及其鄰近 5 位數關聯號，捕捉短期內重複出現的高頻率路徑。",
+        logic: "頻率加權 60% + 關聯性 30% + 擾動 10%" 
+    },
+    { 
+        name: "平衡型策略", 
+        pool: "mix", 
+        desc: "掃描近 5 期數據。平衡中長期遺漏值與短期熱度，尋找正處於「上升趨勢」的號碼組合。",
+        logic: "平均頻率 40% + 遺漏修正 40% + 隨機 20%" 
+    },
+    { 
+        name: "激進型策略", 
+        pool: "corr", 
+        desc: "採用大跨度相關性分析（+10 偏移）。旨在捕捉跳躍式或突變型的版路，適合尋求冷熱切換的轉折點。",
+        logic: "關聯矩陣 50% + 跳號預測 30% + 隨機 20%" 
+    },
+    { 
+        name: "反轉冷號策略", 
+        pool: "cold", 
+        desc: "反向操作，專攻長期未開出的遺漏號碼。策略性地搭配 2-3 個「深水區」號碼與近期動態補位號。",
+        logic: "遺漏值權重 70% + 熱號補位 20% + 隨機 10%" 
+    }
+];
+
+document.getElementById('csvFile').addEventListener('change', function(e){
+    const name = e.target.files[0] ? e.target.files[0].name : "點擊選取歷史數據 CSV";
+    document.getElementById('fileLabel').innerText = name;
+});
+
+async function runAll(){
+    const fileInput = document.getElementById("csvFile");
+    if(!fileInput.files[0]){ alert("請先選取 CSV 檔案"); return; }
+    const text = await fileInput.files[0].text();
+    HIST_DATA = parseCSV(text);
+    if(HIST_DATA.length === 0) return;
+
+    const omission = getOmissionMap(HIST_DATA);
+    updateColdRankUI(omission);
+    showHistory(HIST_DATA);
+    
+    const stats = doBacktest(HIST_DATA);
+    renderStatsTable(stats);
+    renderTopCombinations(HIST_DATA, stats, omission);
+    drawTrendChart(stats.map(s=>s.hit2Rate*100), stats.map(s=>s.hit3Rate*100));
+}
+
 function parseCSV(text){
-  const lines = text.trim().split(/\r?\n/); lines.shift();
-  return lines.map(l=>{
-    const p=l.split(',');
-    return {date:p[0], nums:p.slice(1,6).map(n=>+n)};
-  }).reverse();
+    const lines = text.trim().split("\n");
+    lines.shift();
+    return lines.map(l => {
+        const p = l.split(",");
+        if(p.length < 7) return null;
+        return {date: p[0].trim(), nums: p.slice(2, 7).map(n => parseInt(n.trim())).sort((a,b)=>a-b)};
+    }).filter(x => x !== null).sort((a,b) => new Date(a.date) - new Date(b.date));
 }
 
-// ===== 統計 / 回測模組 =====
-let cache = {freq:{}, sets:[], stats:[]};
-function generateSets(data){
-  if(cache.sets.length) return cache.sets;
-  const W = Math.min(30,data.length), E=2;
-  const recent=data.slice(-W);
-  const excl=data.slice(-E).flatMap(d=>d.nums);
-  const freq={}, gap={};
-  recent.forEach((d,i)=>{d.nums.forEach(n=>{freq[n]=(freq[n]||0)+1;gap[n]=W-i;});});
-  const pool=[...Array(39)].map((_,i)=>i+1).filter(n=>!excl.includes(n));
-  const hot=pool.sort((a,b)=>(freq[b]||0)-(freq[a]||0)).slice(0,10);
-  const warm=pool.filter(n=>gap[n]>=5 && gap[n]<=15);
-  const cold=pool.sort((a,b)=>(gap[b]||0)-(gap[a]||0)).slice(0,10);
-  const pick=(a,k)=>a.sort(()=>Math.random()-0.5).slice(0,k);
-  const sets=[
-      [...pick(hot,2),...pick(warm,2),...pick(cold,1)],
-      [...pick(hot,2),...pick(warm,1),...pick(cold,2)],
-      [...pick(hot,1),...pick(warm,3),...pick(cold,1)]
-  ].map(s=>[...new Set(s)].sort((a,b)=>a-b));
-  cache.freq=freq;
-  cache.sets=sets;
-  return sets;
+function getOmissionMap(data) {
+    const map = {};
+    for(let i=1; i<=39; i++) map[i] = 0;
+    const lastIdx = {};
+    data.forEach((d, idx) => d.nums.forEach(n => lastIdx[n] = idx));
+    for(let i=1; i<=39; i++) map[i] = data.length - (lastIdx[i] !== undefined ? lastIdx[i] : -1);
+    return map;
 }
 
-function calcSetStats(sets){
-  if(cache.stats.length) return cache.stats;
-  const res=sets.map(()=>({hit2:0,hit3:0,total:0}));
-  const availablePeriods = Math.max(HIST.length, 10);
-  for(let i=0;i<availablePeriods;i++){
-    const draw=HIST[i].nums;
-    sets.forEach((s,idx)=>{
-      const h=s.filter(n=>draw.includes(n)).length;
-      if(h>=2) res[idx].hit2++;
-      if(h>=3) res[idx].hit3++;
-      res[idx].total++;
+function updateColdRankUI(omission) {
+    const sorted = Object.entries(omission).sort((a,b) => b[1] - a[1]).slice(0, 5);
+    document.getElementById("coldRankSection").style.display = "block";
+    document.getElementById("coldList").innerHTML = sorted.map(item => `
+        <div style="text-align:center; margin:10px;">
+            <div class="ball" style="border: 2px solid var(--error)">${String(item[0]).padStart(2,'0')}</div>
+            <div class="cold-tag">${item[1]} 期未開</div>
+        </div>
+    `).join("");
+}
+
+function getDigitStats(data) {
+    const counts = Array(10).fill(0);
+    data.slice(-50).forEach(d => d.nums.forEach(n => counts[n % 10]++));
+    return counts;
+}
+
+function showHistory(data){
+    let html = "<table>";
+    data.slice(-5).reverse().forEach(d => {
+        html += `<tr><td style='opacity:0.6; font-size:0.8rem;'>${d.date.slice(5)}</td><td>${d.nums.map(n => `<span class="ball">${String(n).padStart(2,'0')}</span>`).join("")}</td></tr>`;
     });
-  }
-  cache.stats=res;
-  return res;
-}
-
-// ===== UI / 渲染模組 =====
-function runAll(){
-  const f=document.getElementById('csvFile').files[0];
-  if(!f) return alert('請選 CSV');
-  f.text().then(txt=>{
-    HIST=parseCSV(txt);
-    if(HIST.length<10) return alert('至少需要 10 期資料');
-    document.getElementById('warningMsg').innerText = HIST.length<40?'資料量少於 40 期，統計結果可能不穩定':'';
-    const sets=generateSets(HIST);
-    const stats=calcSetStats(sets);
-    sets.sort((a,b)=>stats[sets.indexOf(b)].hit3 - stats[sets.indexOf(a)].hit3);
-    renderRecommend(sets,stats);
-    renderBacktest();
-    updateHotNumbers(30);
-  });
-}
-
-function renderRecommend(sets,stats){
-  let html='<h3>推薦牌組（含命中率 + 下期預測）</h3>';
-  sets.forEach((s,i)=>{
-    const hit2 = stats[i].hit2/stats[i].total*100;
-    const hit3 = stats[i].hit3/stats[i].total*100;
-
-    // 下期預測機率：簡單示範，可用加權或更複雜算法
-    const lastDraw = HIST[HIST.length-1].nums;
-    const hitNext2 = (s.filter(n=>lastDraw.includes(n)).length>=2)?80:30;
-    const hitNext3 = (s.filter(n=>lastDraw.includes(n)).length>=3)?50:10;
-
-    html += `<div class="strategy-card">
-      <div class="ball-container">${s.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join('')}</div>
-      <div class="stats-container">
-        <span class="badge b2">2★: ${hit2.toFixed(1)}%</span>
-        <span class="badge b3">3★: ${hit3.toFixed(1)}%</span>
-        <span class="badge b2-pred">下期 2★: ${hitNext2}%</span>
-        <span class="badge b3-pred">下期 3★: ${hitNext3}%</span>
-      </div>
-    </div>`;
-  });
-  document.getElementById('recommend').innerHTML=html;
-}
-
-let trendChart;
-function renderBacktest(){
-  const h2=[], h3=[], labels=[];
-  const availablePeriods = HIST.length;
-  for(let i=0;i<availablePeriods;i++){
-    const draw=HIST[i].nums;
-    const sets=generateSets(HIST);
-    let max=0;
-    sets.forEach(s=>{const hit=s.filter(n=>draw.includes(n)).length;if(hit>max) max=hit;});
-    labels.push(HIST[i].date);
-    h2.push(max>=2?1:0); h3.push(max>=3?1:0);
-  }
-  const ctx=document.getElementById('trendChart').getContext('2d');
-  if(trendChart) trendChart.destroy();
-  trendChart=new Chart(ctx,{
-    type:'line',
-    data:{labels,datasets:[
-      {label:'≥2★',data:h2, borderColor:'#38bdf8',fill:false},
-      {label:'≥3★',data:h3, borderColor:'#fbbf24',fill:false}
-    ]},
-    options:{responsive:true, plugins:{legend:{position:'top'}}}
-  });
-
-  // 單期詳細
-  let rows='';
-  for(let i=0;i<availablePeriods;i++){
-    const draw=HIST[i].nums;
-    const sets=generateSets(HIST);
-    let max=0; sets.forEach(s=>{const hit=s.filter(n=>draw.includes(n)).length;if(hit>max) max=hit;});
-    rows+=`<tr><td>${HIST[i].date}</td><td>${max}</td></tr>`;
-  }
-  document.getElementById('detail').innerHTML=`
-    <div class="table-wrap">
-    <table><tr><th>日期</th><th>最高命中</th></tr>${rows}</table></div>
-  `;
-}
-
-// ===== 熱門號碼 Modal =====
-let hotChart;
-function showModal(){document.getElementById('hotModal').style.display='flex';}
-function hideModal(){document.getElementById('hotModal').style.display='none';}
-function updateHotNumbers(period){
-  const len=Math.min(period,HIST.length);
-  const data=HIST.slice(-len);
-  const freq={};
-  data.forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
-  const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('hotInfo').innerText=`實際使用 ${len} 期數據（選擇 ${period} 期）`;
-  let html='<tr><th>號碼</th><th>出現次數</th></tr>';
-  sorted.forEach(([num,count])=>{html+=`<tr><td>${num}</td><td>${count}</td></tr>`;});
-  document.getElementById('hotTable').innerHTML=html;
-
-  const ctx=document.getElementById('hotChart').getContext('2d');
-  if(hotChart) hotChart.destroy();
-  hotChart=new Chart(ctx,{type:'bar',data:{
-    labels:sorted.map(([n])=>n), datasets:[{label:'出現次數',data:sorted.map(([n,c])=>c),backgroundColor:'#38bdf8'}]
-  },options:{responsive:true,plugins:{legend:{display:false}}}});
-}
-
-document.getElementById('csvFile').addEventListener('change',e=>{fileLabel.innerText=e.target.files[0].name;});
-</script>
-</body>
-</html>
+    html += "</table>";
+    document.getElementById("
