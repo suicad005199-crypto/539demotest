@@ -1,100 +1,112 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>539 歷史號碼分析工具</title>
-<style>
-  body { font-family: Arial, sans-serif; background: #0f172a; color: #f1f5f9; margin: 0; padding: 10px; }
-  h1 { text-align: center; color: #38bdf8; }
-  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-  th, td { border: 1px solid #334155; padding: 6px; text-align: center; }
-  th { background: #1e293b; }
-  .stats { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-  .stat-card { background: #1e293b; padding: 10px; border-radius: 8px; width: 80px; text-align: center; }
-  .hot { color: #f87171; font-weight: bold; }
-  .cold { color: #60a5fa; font-weight: bold; }
-  input, button { padding: 6px; margin: 5px; border-radius: 4px; border: none; }
-  button { background: #38bdf8; color: #0f172a; font-weight: bold; cursor: pointer; }
-</style>
+    <meta charset="UTF-8">
+    <title>539 進階版路分析儀</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; background: #eceff1; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .upload-section { border: 2px dashed #bbb; padding: 20px; text-align: center; margin-bottom: 20px; border-radius: 10px; }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .panel { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fafafa; }
+        h3 { border-bottom: 2px solid #3498db; padding-bottom: 5px; color: #2c3e50; }
+        .stat-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; }
+        .ball-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+        .ball { width: 35px; height: 35px; background: #e74c3c; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9em; }
+        .highlight { color: #e67e22; font-weight: bold; }
+        button { cursor: pointer; background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; transition: 0.3s; }
+        button:hover { background: #2980b9; }
+    </style>
 </head>
 <body>
 
-<h1>539 歷史號碼分析工具</h1>
+<div class="container">
+    <h2>539 進階版路分析選牌器</h2>
+    
+    <div class="upload-section">
+        <p>請上傳您的 CSV 檔案 (格式：日期,號1,號2,號3,號4,號5)</p>
+        <input type="file" id="csvFile" accept=".csv">
+    </div>
 
-<input type="file" id="csvFile" accept=".csv">
-<button onclick="loadCSV()">上傳 CSV 並分析</button>
+    <div id="mainContent" style="display:none;">
+        <div class="panel">
+            <h3>策略推薦號碼</h3>
+            <div id="recommendation" class="ball-row"></div>
+            <p id="logicDesc" style="font-size: 0.85em; color: #666; margin-top: 10px;"></p>
+        </div>
 
-<h2>歷史開獎號碼</h2>
-<table id="historyTable">
-  <thead>
-    <tr>
-      <th>日期</th>
-      <th>號碼</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
-
-<h2>號碼出現次數</h2>
-<div class="stats" id="numberStats"></div>
-
-<h2>奇偶比例</h2>
-<p id="oddEvenRatio"></p>
+        <div class="dashboard">
+            <div class="panel">
+                <h3>位移規律分析 (+/-10)</h3>
+                <div id="shiftStats">載入中...</div>
+            </div>
+            <div class="panel">
+                <h3>同尾掉牌強勢度</h3>
+                <div id="tailStats">載入中...</div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
-let historyData = [];
-
-function loadCSV() {
-  const file = document.getElementById('csvFile').files[0];
-  if (!file) { alert('請選擇 CSV 檔案'); return; }
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const text = e.target.result;
-    parseCSV(text);
-    analyze();
-  };
-  reader.readAsText(file);
-}
-
-function parseCSV(text) {
-  historyData = [];
-  const lines = text.trim().split('\n');
-  for (let i = 1; i < lines.length; i++) { // 跳過標題
-    const parts = lines[i].split(',');
-    if (parts.length < 6) continue; // 確保有5個號碼
-    const date = parts[0];
-    const numbers = parts.slice(1,6).map(n => parseInt(n,10));
-    historyData.push([date, numbers]);
-  }
-}
-
-function analyze() {
-  const tableBody = document.querySelector('#historyTable tbody');
-  tableBody.innerHTML = '';
-
-  let counts = Array(39).fill(0);
-  let odd = 0, even = 0;
-
-  historyData.forEach(([date, numbers]) => {
-    tableBody.innerHTML += `<tr><td>${date}</td><td>${numbers.join(', ')}</td></tr>`;
-    numbers.forEach(n => {
-      counts[n-1]++;
-      if (n % 2 === 0) even++; else odd++;
+    document.getElementById('csvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            processData(event.target.result);
+        };
+        reader.readAsText(file);
     });
-  });
 
-  const statsDiv = document.getElementById('numberStats');
-  statsDiv.innerHTML = '';
-  counts.forEach((c, idx) => {
-    let cls = '';
-    if (c === Math.max(...counts)) cls = 'hot';
-    if (c === Math.min(...counts)) cls = 'cold';
-    statsDiv.innerHTML += `<div class="stat-card ${cls}">${idx+1}<br>${c}</div>`;
-  });
+    function processData(csvText) {
+        const lines = csvText.trim().split('\n').slice(1); // 跳過標頭
+        const data = lines.map(line => line.split(',').slice(1).map(Number));
+        const lastDraw = data[0];
 
-  document.getElementById('oddEvenRatio').innerText = `奇數: ${odd} 次，偶數: ${even} 次`;
-}
+        // 1. 分析位移規律 (+/- 10)
+        let shiftCount = 0;
+        for(let i=0; i<data.length-1; i++) {
+            data[i].forEach(num => {
+                if(data[i+1].includes(num+10) || data[i+1].includes(num-10)) shiftCount++;
+            });
+        }
+        document.getElementById('shiftStats').innerHTML = `
+            <div class="stat-item">過去 ${data.length} 期位移發生次數: <span class="highlight">${shiftCount}</span></div>
+            <div class="stat-item">上期位移候選: <span>${lastDraw.map(n => (n+10<=39?n+10:'') + (n-10>0?','+(n-10):'')).join(',').replace(/,,/g,',').trim()}</span></div>
+        `;
+
+        // 2. 分析尾數熱度
+        let tails = {};
+        data.forEach(row => {
+            row.forEach(n => {
+                let t = n % 10;
+                tails[t] = (tails[t] || 0) + 1;
+            });
+        });
+        let sortedTails = Object.entries(tails).sort((a,b) => b[1] - a[1]).slice(0, 3);
+        document.getElementById('tailStats').innerHTML = sortedTails.map(t => `
+            <div class="stat-item">${t[0]} 尾出現次數: <span class="highlight">${t[1]} 次</span></div>
+        `).join('');
+
+        // 3. 執行策略選牌 (結合位移與強勢尾數)
+        let pool = [];
+        lastDraw.forEach(n => {
+            if(n+10 <= 39) pool.push(n+10);
+            if(n-10 > 0) pool.push(n-10);
+        });
+        sortedTails.forEach(t => {
+            let tail = parseInt(t[0]);
+            [tail, tail+10, tail+20, tail+30].forEach(v => { if(v<=39 && v>0) pool.push(v); });
+        });
+
+        let finalBalls = [...new Set(pool)].sort(() => Math.random() - 0.5).slice(0, 5).sort((a,b)=>a-b);
+        
+        // 顯示結果
+        const recDiv = document.getElementById('recommendation');
+        recDiv.innerHTML = finalBalls.map(n => `<div class="ball">${n < 10 ? '0'+n : n}</div>`).join('');
+        document.getElementById('logicDesc').innerText = `分析依據：上期位移連動 + 歷史強勢 ${sortedTails.map(t=>t[0]).join(', ')} 尾數。`;
+        document.getElementById('mainContent').style.display = 'block';
+    }
 </script>
 
 </body>
