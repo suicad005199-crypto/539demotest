@@ -2,17 +2,15 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>539 ≥3 強化專打回測系統</title>
+<title>539 ≥4 主目標｜盤型篩選強攻版</title>
 <style>
 body { font-family: Arial; padding: 20px; }
 button { padding: 8px 16px; margin: 10px 0; }
-table { border-collapse: collapse; margin-top: 10px; }
-td, th { border: 1px solid #ccc; padding: 6px 10px; }
 </style>
 </head>
 <body>
 
-<h2>539 ≥3 中星強化版｜滾動回測</h2>
+<h2>539 ≥4 主目標（只打高度共振盤）</h2>
 
 <input type="file" id="csvFile" accept=".csv">
 <br>
@@ -21,126 +19,114 @@ td, th { border: 1px solid #ccc; padding: 6px 10px; }
 <div id="output"></div>
 
 <script>
-function parseCSV(text) {
+function parseCSV(text){
   return text.trim().split("\n").slice(1)
     .map(r => r.split(",").slice(1).map(Number));
 }
 
-function runBacktest() {
+function runBacktest(){
   const file = document.getElementById("csvFile").files[0];
-  if (!file) return alert("請上傳 CSV");
+  if(!file) return alert("請上傳 CSV");
 
   const reader = new FileReader();
   reader.onload = () => {
     const draws = parseCSV(reader.result);
 
-    let tests = 0;
-    let hit3any = 0;
+    let total=0, played=0;
+    let hit2=0, hit3=0, hit4=0;
 
-    for (let i = 30; i < draws.length; i++) {
-      const history = draws.slice(0, i);
-      const actual = draws[i];
+    for(let i=30;i<draws.length;i++){
+      total++;
+      const history = draws.slice(0,i);
+      const actual  = draws[i];
 
       // === Gap ===
-      const gap = {};
-      for (let n = 1; n <= 39; n++) gap[n] = 0;
-      history.forEach(d => {
-        for (let n = 1; n <= 39; n++) gap[n]++;
-        d.forEach(n => gap[n] = 0);
+      const gap={}; for(let n=1;n<=39;n++) gap[n]=0;
+      history.forEach(d=>{
+        for(let n=1;n<=39;n++) gap[n]++;
+        d.forEach(n=>gap[n]=0);
       });
 
-      // === 熱號 ===
-      const freq5 = {};
-      history.slice(-5).forEach(d =>
-        d.forEach(n => freq5[n] = (freq5[n] || 0) + 1)
-      );
+      // === 熱號（近5期 ≥3次）===
+      const f5={};
+      history.slice(-5).forEach(d=>d.forEach(n=>f5[n]=(f5[n]||0)+1));
+      const hot = Object.keys(f5).filter(n=>f5[n]>=3).map(Number);
 
-      const hot = Object.keys(freq5)
-        .filter(n => freq5[n] >= 2)
-        .map(Number);
+      // === 極冷 ===
+      const cold = Object.keys(gap).filter(n=>gap[n]>=18).map(Number);
 
-      const cold = Object.keys(gap)
-        .filter(n => gap[n] >= 12)
-        .map(Number);
+      // === 盤型門檻 ===
+      const recent2 = history.slice(-2).flat();
+      const hotOverlap = hot.filter(n=>recent2.includes(n)).length;
+      if(!(hotOverlap>=3 && cold.length>=2)) continue;
 
-      const extremeCold = Object.keys(gap)
-        .filter(n => gap[n] >= 18)
-        .map(Number);
+      played++;
 
-      const predictions = [];
+      // === 產生 12 組（主打 4熱1冷，補 3熱2冷）===
+      const preds=[];
 
-      // ===== 結構 A：3 熱 + 2 冷 =====
-      for (let i1 = 0; i1 < hot.length; i1++) {
-        for (let i2 = i1+1; i2 < hot.length; i2++) {
-          for (let i3 = i2+1; i3 < hot.length; i3++) {
-            for (let c1 = 0; c1 < cold.length; c1++) {
-              for (let c2 = c1+1; c2 < cold.length; c2++) {
-                const combo = [
-                  hot[i1], hot[i2], hot[i3],
-                  cold[c1], cold[c2]
-                ];
-                if (new Set(combo).size !== 5) continue;
-                predictions.push(combo);
-                if (predictions.length >= 8) break;
+      // 4熱1冷
+      for(let a=0;a<hot.length && preds.length<12;a++){
+        for(let b=a+1;b<hot.length;b++){
+          for(let c=b+1;c<hot.length;c++){
+            for(let d=c+1;d<hot.length;d++){
+              for(let e=0;e<cold.length;e++){
+                const p=[hot[a],hot[b],hot[c],hot[d],cold[e]];
+                if(new Set(p).size!==5) continue;
+                preds.push(p);
+                if(preds.length>=12) break;
               }
-              if (predictions.length >= 8) break;
+              if(preds.length>=12) break;
             }
-            if (predictions.length >= 8) break;
+            if(preds.length>=12) break;
           }
-          if (predictions.length >= 8) break;
+          if(preds.length>=12) break;
         }
-        if (predictions.length >= 8) break;
       }
 
-      // ===== 結構 B：4 熱 + 1 極冷 =====
-      if (predictions.length < 8) {
-        for (let i1 = 0; i1 < hot.length; i1++) {
-          for (let i2 = i1+1; i2 < hot.length; i2++) {
-            for (let i3 = i2+1; i3 < hot.length; i3++) {
-              for (let i4 = i3+1; i4 < hot.length; i4++) {
-                for (let ec = 0; ec < extremeCold.length; ec++) {
-                  const combo = [
-                    hot[i1], hot[i2], hot[i3], hot[i4],
-                    extremeCold[ec]
-                  ];
-                  if (new Set(combo).size !== 5) continue;
-                  predictions.push(combo);
-                  if (predictions.length >= 8) break;
+      // 3熱2冷（補）
+      if(preds.length<12){
+        for(let a=0;a<hot.length && preds.length<12;a++){
+          for(let b=a+1;b<hot.length;b++){
+            for(let c=b+1;c<hot.length;c++){
+              for(let d=0;d<cold.length;d++){
+                for(let e=d+1;e<cold.length;e++){
+                  const p=[hot[a],hot[b],hot[c],cold[d],cold[e]];
+                  if(new Set(p).size!==5) continue;
+                  preds.push(p);
+                  if(preds.length>=12) break;
                 }
-                if (predictions.length >= 8) break;
+                if(preds.length>=12) break;
               }
-              if (predictions.length >= 8) break;
+              if(preds.length>=12) break;
             }
-            if (predictions.length >= 8) break;
+            if(preds.length>=12) break;
           }
-          if (predictions.length >= 8) break;
         }
       }
 
-      if (predictions.length === 0) continue;
-
-      let hit3 = false;
-      predictions.forEach(p => {
-        const hit = p.filter(n => actual.includes(n)).length;
-        if (hit >= 3) hit3 = true;
+      let m2=false,m3=false,m4=false;
+      preds.forEach(p=>{
+        const h=p.filter(n=>actual.includes(n)).length;
+        if(h>=2) m2=true;
+        if(h>=3) m3=true;
+        if(h>=4) m4=true;
       });
 
-      if (hit3) hit3any++;
-      tests++;
+      if(m2) hit2++;
+      if(m3) hit3++;
+      if(m4) hit4++;
     }
 
     document.getElementById("output").innerHTML = `
-      <b>回測期數：</b> ${tests}<br>
-      <b style="font-size:18px">至少一組 ≥3：</b>
-      <b style="font-size:18px">${(hit3any/tests*100).toFixed(1)}%</b>
-      <br><br>
-      <small>
-      設計目標：集中風險、提升 ≥3<br>
-      已移除所有平衡與美感限制
-      </small>
+      <b>總期數：</b> ${total}<br>
+      <b>出手期數：</b> ${played}（${(played/total*100).toFixed(1)}%）<br><br>
+      <b>出手期 ≥2：</b> ${played? (hit2/played*100).toFixed(1):0}%<br>
+      <b>出手期 ≥3：</b> ${played? (hit3/played*100).toFixed(1):0}%<br>
+      <b style="font-size:18px">出手期 ≥4：</b>
+      <b style="font-size:18px">${played? (hit4/played*100).toFixed(1):0}%</b>
     `;
   };
-
   reader.readAsText(file);
 }
 </script>
