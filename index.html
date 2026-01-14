@@ -2,52 +2,59 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>539 ≥2 星策略回測與預測</title>
+<title>539 ≥2 星 A/B 策略對照</title>
 
 <style>
 body { font-family: system-ui; background:#f8fafc; padding:20px; color:#1e293b }
-.container { max-width:1000px; margin:auto }
-
+.container { max-width:1100px; margin:auto }
 h2,h3 { margin:10px 0 }
-.card { background:#fff; border-radius:10px; padding:15px; margin-bottom:15px; box-shadow:0 1px 3px rgba(0,0,0,.1) }
 
-button { padding:6px 16px; background:#2563eb; color:#fff; border:0; border-radius:6px; cursor:pointer }
+.card { background:#fff; border-radius:10px; padding:15px; margin-bottom:15px;
+        box-shadow:0 1px 3px rgba(0,0,0,.1) }
+
+button { padding:6px 16px; background:#2563eb; color:#fff; border:0; border-radius:6px }
 
 table { width:100%; border-collapse:collapse; font-size:14px }
 th,td { padding:8px; border-bottom:1px solid #e5e7eb; vertical-align:top }
 
-.num { display:inline-block; padding:2px 6px; margin:2px; border:1px solid #cbd5e1; border-radius:4px; font-family:monospace }
+.num { display:inline-block; padding:2px 6px; margin:2px;
+       border:1px solid #cbd5e1; border-radius:4px; font-family:monospace }
 .hit { background:#22c55e; color:#fff; border-color:#16a34a }
 .draw { background:#64748b; color:#fff; border-color:#475569 }
 
-.panel { max-height:380px; overflow:auto }
+.panel { max-height:360px; overflow:auto }
+.badge { display:inline-block; padding:2px 8px; border-radius:6px;
+         background:#e5e7eb; font-size:12px; margin-left:6px }
+.win { background:#22c55e; color:#fff }
+.warn { color:#dc2626; font-weight:bold }
 </style>
 </head>
 
 <body>
 <div class="container">
 
-<h2>📊 539 專攻 ≥2 星 回測 / 下期預測</h2>
+<h2>📊 539 ≥2 星 A/B 策略對照系統</h2>
 
 <input type="file" id="csv" accept=".csv">
-<button onclick="run()">執行</button>
+<button onclick="run()">執行回測</button>
 
-<!-- 下期預測 -->
+<!-- 新增：資料讀取狀態 -->
+<div id="dataInfo" class="card"></div>
+
+<div id="summary" class="card"></div>
 <div id="next" class="card"></div>
 
-<!-- 回測 log -->
 <div class="card">
 <h3>回測 Log（開獎 vs 預測）</h3>
 <div id="log" class="panel"></div>
 </div>
 
-<!-- 邏輯說明 -->
 <div class="card" id="logic"></div>
 
 </div>
 
 <script>
-/* ---------- 基礎 ---------- */
+/* ---------- CSV ---------- */
 function parseCSV(t){
   return t.trim().split('\n').slice(1).map(r=>{
     const p=r.split(',');
@@ -59,25 +66,50 @@ function run(){
   const f=document.getElementById('csv').files[0];
   if(!f) return alert('請上傳 CSV');
   const r=new FileReader();
-  r.onload=e=>simulate(parseCSV(e.target.result));
+  r.onload=e=>{
+    const data=parseCSV(e.target.result);
+    renderDataInfo(data);
+    simulate(data);
+  };
   r.readAsText(f);
 }
 
-/* ---------- 核心策略（專攻 ≥2） ---------- */
-function buildPool(data,i){
+/* ---------- 資料資訊 Panel ---------- */
+function renderDataInfo(data){
+  const total=data.length;
+  const usable=Math.max(0,total-10);
+  document.getElementById('dataInfo').innerHTML=`
+    <h3>📁 CSV 資料狀態</h3>
+    原始資料筆數：<strong>${total}</strong><br>
+    可回測期數（扣除前 10 期）：<strong>${usable}</strong><br>
+    ${usable<=0?'<span class="warn">⚠ 資料不足，無法回測</span>':''}
+  `;
+}
+
+/* ---------- Pool ---------- */
+function poolA(data,i){
   const hist=data.slice(i-10,i);
   const freq={};
   hist.forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
-  return Object.keys(freq)
-    .filter(n=>freq[n]>=2)
-    .map(Number)
-    .slice(0,20);
+  return Object.keys(freq).filter(n=>freq[n]>=2).map(Number).slice(0,20);
 }
 
-function genPicks(pool,count=5){
+function poolB(data,i){
+  const hist=data.slice(i-10,i);
+  const freq={};
+  hist.forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
+  let hot=Object.keys(freq).filter(n=>freq[n]>=2).map(Number);
+  for(let n=1; hot.length<20 && n<=39; n++){
+    if(!hot.includes(n)) hot.push(n);
+  }
+  return hot;
+}
+
+/* ---------- Picks（固定生成） ---------- */
+function genPicks(pool){
   const picks=[];
   let idx=0;
-  while(picks.length<count){
+  while(picks.length<5){
     let c=[];
     for(let k=0;k<pool.length && c.length<5;k++){
       const n=pool[(idx+k*2)%pool.length];
@@ -92,71 +124,77 @@ function genPicks(pool,count=5){
 
 /* ---------- 回測 ---------- */
 function simulate(data){
+  if(data.length<=10) return;
+
+  let stat={ A:{hit2:0,total:0}, B:{hit2:0,total:0} };
   let rows='';
-  let hit2=0, total=0;
 
   for(let i=10;i<data.length;i++){
     const draw=data[i].nums;
-    const pool=buildPool(data,i);
-    if(pool.length<5) continue;
 
-    const picks=genPicks(pool);
-    let best=0;
+    ['A','B'].forEach(s=>{
+      const pool=s==='A'?poolA(data,i):poolB(data,i);
+      if(pool.length<5) return;
+      const picks=genPicks(pool);
+      let best=0;
+      picks.forEach(p=>{
+        best=Math.max(best,p.filter(n=>draw.includes(n)).length);
+      });
+      if(best>=2) stat[s].hit2++;
+      stat[s].total++;
+    });
 
-    const pickHTML=picks.map(p=>{
-      const h=p.filter(n=>draw.includes(n)).length;
-      best=Math.max(best,h);
-      return `<div>${p.map(n=>
-        `<span class="num ${draw.includes(n)?'hit':''}">${n}</span>`
-      ).join('')}</div>`;
-    }).join('');
-
-    if(best>=2) hit2++;
-    total++;
-
+    const showPicks=genPicks(poolA(data,i));
     rows=`
     <tr>
       <td>${data[i].date}</td>
       <td>${draw.map(n=>`<span class="num draw">${n}</span>`).join('')}</td>
-      <td>${best} 星</td>
-      <td>${pickHTML}</td>
+      <td>${showPicks.map(p=>`<div>${p.map(n=>
+        `<span class="num ${draw.includes(n)?'hit':''}">${n}</span>`
+      ).join('')}</div>`).join('')}</td>
     </tr>`+rows;
   }
 
+  const rateA=(stat.A.hit2/stat.A.total*100).toFixed(1);
+  const rateB=(stat.B.hit2/stat.B.total*100).toFixed(1);
+  const winner=rateA>=rateB?'A':'B';
+
+  document.getElementById('summary').innerHTML=`
+    <h3>策略 ≥2 星命中率</h3>
+    A 策略：${rateA}% ${winner==='A'?'<span class="badge win">勝出</span>':''}<br>
+    B 策略：${rateB}% ${winner==='B'?'<span class="badge win">勝出</span>':''}
+  `;
+
   document.getElementById('log').innerHTML=
     `<table>
-      <tr><th>日期</th><th>開獎</th><th>結果</th><th>預測牌組</th></tr>
+      <tr><th>日期</th><th>開獎</th><th>A 策略預測</th></tr>
       ${rows}
     </table>`;
 
-  renderNext(data);
-  renderLogic(hit2,total);
+  renderNext(data,winner);
+  renderLogic(rateA,rateB,winner);
 }
 
-/* ---------- 下期預測 ---------- */
-function renderNext(data){
-  const pool=buildPool(data,data.length);
+/* ---------- 下期 ---------- */
+function renderNext(data,w){
+  const pool=w==='A'?poolA(data,data.length):poolB(data,data.length);
   const picks=genPicks(pool);
-
   document.getElementById('next').innerHTML=`
-    <h3>📌 下期預測牌組（${data[data.length-1].date} 後一期）</h3>
-    ${picks.map((p,i)=>
-      `<div><strong>組${i+1}</strong>：
-      ${p.map(n=>`<span class="num">${n}</span>`).join('')}</div>`
-    ).join('')}
+    <h3>📌 下期預測（採用 ${w} 策略）</h3>
+    ${picks.map((p,i)=>`<div>組${i+1}：
+      ${p.map(n=>`<span class="num">${n}</span>`).join('')}</div>`).join('')}
   `;
 }
 
-/* ---------- 邏輯說明 ---------- */
-function renderLogic(hit2,total){
+/* ---------- 邏輯 ---------- */
+function renderLogic(a,b,w){
   document.getElementById('logic').innerHTML=`
-    <h3>策略邏輯（專攻 ≥2 星）</h3>
+    <h3>策略邏輯說明</h3>
     <ul>
-      <li>僅使用「近 10 期出現 ≥2 次」的高覆蓋號碼</li>
-      <li>每期固定產生 5 組，避免亂數漂移</li>
-      <li>目標不是爆擊，而是提高「至少中 2 星」機率</li>
-      <li>回測 ≥2 命中率：約 ${(hit2/total*100).toFixed(1)}%</li>
-      <li>策略定位：覆蓋導向、低波動</li>
+      <li>A：純熱號覆蓋，壓低變異，追求 ≥2 穩定率</li>
+      <li>B：熱號 + 輪動補位，提升涵蓋面</li>
+      <li>僅評估 ≥2 星，不計 3 / 4 星</li>
+      <li>自動選用 ≥2 命中率較高策略（本次：${w}）</li>
     </ul>
   `;
 }
