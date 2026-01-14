@@ -1,152 +1,151 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<title>539 終極預測系統 V16</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-:root {
-    --bg:#0d1117; --card:#161b22; --border:#30363d; --accent:#58a6ff;
-    --win:#238636; --warn:#d29922; --err:#da3633;
-}
-body {margin:0;padding:15px;font-family:'PingFang TC','Microsoft JhengHei',monospace;background:var(--bg);color:#c9d1d9;font-size:13px;}
-.dashboard {max-width:1200px;margin:auto;display:grid;grid-template-columns:1fr 350px;gap:15px;}
-.panel {background:var(--card);border:1px solid var(--border);border-radius:12px;padding:15px;box-shadow:0 6px 20px rgba(0,0,0,0.5);}
-input, button {width:100%;padding:12px;margin-bottom:10px;border-radius:6px;border:none;font-weight:bold;cursor:pointer;}
-button {background:var(--win);color:#fff;}
-.portfolio-panel{text-align:center;border:2px solid var(--accent);background:#010409;padding:12px;}
-.gold-ball{display:inline-block;width:45px;height:45px;line-height:45px;background:linear-gradient(135deg,#f1e05a,#d29922);color:#000;border-radius:50%;margin:5px;font-weight:900;font-size:20px;box-shadow:0 0 15px rgba(210,153,34,0.4);}
-.metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
-.metric-card{padding:10px;background:#0d1117;border-radius:6px;border-top:3px solid var(--accent);}
-.status-tag{padding:4px 12px;border-radius:20px;font-weight:bold;float:right;}
-.active{background:var(--win);color:#fff;}
-.reject{background:var(--err);color:#fff;}
-#log{height:120px;overflow-y:auto;background:#000;padding:10px;border-radius:6px;font-family:Consolas,monospace;color:#7ee787;border:1px solid var(--border);margin-top:15px;font-size:12px;}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>539 AI 驗證預測系統</title>
+    <style>
+        :root { --ios-blue: #007AFF; --ios-green: #34C759; --ios-orange: #FF9500; --ios-red: #FF3B30; --ios-bg: #F2F2F7; }
+        body { font-family: -apple-system, sans-serif; background: var(--ios-bg); margin: 0; padding: 10px; color: #1c1c1e; }
+        .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        h2 { font-size: 16px; text-align: center; margin: 0 0 12px 0; }
+        label { font-size: 12px; font-weight: 600; color: #8e8e93; display: block; margin-bottom: 4px; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; margin-bottom: 10px; }
+        
+        /* 按鈕佈局 */
+        .btn-stack { display: flex; flex-direction: column; gap: 8px; }
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        button { padding: 12px; border-radius: 10px; border: none; font-weight: 600; font-size: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .btn-main { background: var(--ios-blue); color: white; }
+        .btn-tune { background: var(--ios-orange); color: white; }
+        .btn-verify { background: var(--ios-green); color: white; }
+        button:active { opacity: 0.6; }
+
+        /* 結果顯示 */
+        #resultArea { display: none; }
+        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 10px 0; }
+        .stat-item { background: #f8f9fa; padding: 8px; border-radius: 8px; text-align: center; }
+        .stat-val { display: block; font-size: 16px; font-weight: bold; color: var(--ios-blue); }
+        .stat-lbl { font-size: 10px; color: #8e8e93; }
+
+        /* 球號樣式 */
+        .ball-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin: 8px 0; }
+        .ball { width: 28px; height: 28px; line-height: 28px; text-align: center; border-radius: 50%; background: #e5e5ea; font-size: 12px; font-weight: bold; }
+        .hit { background: var(--ios-red) !important; color: white !important; }
+        
+        .log-row { font-size: 12px; padding: 8px 0; border-bottom: 1px solid #f2f2f7; }
+        .star-tag { font-size: 10px; padding: 1px 4px; border-radius: 4px; background: #fff2cc; color: #d6a100; font-weight: bold; margin-left: 4px; }
+    </style>
 </head>
 <body>
 
-<div class="dashboard">
-    <div class="main-content">
-        <div class="panel">
-            <h2 style="margin:0 0 10px 0;color:var(--accent);">
-                🛡️ 539 終極預測系統 V16
-                <span id="sysStatus" class="status-tag active">系統就緒</span>
-            </h2>
-            <input type="file" id="csvFile">
-            <button onclick="EngineV16.run()">生成最優牌組</button>
-        </div>
-
-        <div class="panel portfolio-panel">
-            <h3 style="margin:0;color:var(--warn)">🌟 最優牌組</h3>
-            <div id="portfolio">-- -- -- -- --</div>
-            <div id="kellyBox" style="margin-top:10px;padding:10px;background:#21262d;border-radius:6px;">
-                預期勝率: <span id="kPct" style="color:var(--warn);font-weight:bold;">0.00%</span>
-            </div>
-        </div>
-
-        <div class="panel" style="margin-top:15px;">
-            <strong>歷史依據與指標說明</strong>
-            <p>1. 資料來源：過去所有開獎號碼 CSV。</p>
-            <p>2. 選號邏輯：統計單號頻率 + 共現矩陣 + 後驗概率分析。</p>
-            <p>3. 預測：根據歷史模式生成最可能的號碼組合。</p>
-            <p>4. 蒙地卡羅抽樣：計算 2~5 星中星率。</p>
-            <p>5. 指標說明：Entropy 越低代表信號越明確，PSI 越高表示近期分布漂移。</p>
-        </div>
+<div class="card">
+    <h2>539 數據分析系統</h2>
+    <label>步驟 1: 匯入 CSV</label>
+    <input type="file" id="csvFile" accept=".csv">
+    
+    <div style="display:flex; gap:8px;">
+        <div style="flex:1"><label>冷熱權重</label><input type="number" id="wHot" value="5"></div>
+        <div style="flex:1"><label>拖牌權重</label><input type="number" id="wFollow" value="8"></div>
     </div>
 
-    <div class="sidebar">
-        <div class="panel">
-            <strong>預測中星率 (%)</strong>
-            <table style="width:100%;line-height:2;">
-                <tr><td>2星預測</td><td id="p2" style="text-align:right;color:var(--accent)">--</td></tr>
-                <tr><td>3星預測</td><td id="p3" style="text-align:right;color:var(--accent)">--</td></tr>
-                <tr><td>4星預測</td><td id="p4" style="text-align:right;color:var(--accent)">--</td></tr>
-                <tr><td>5星預測</td><td id="p5" style="text-align:right;color:var(--warn)">--</td></tr>
-            </table>
-        </div>
-
-        <div class="panel">
-            <strong>診斷指標</strong>
-            <div class="metric-grid">
-                <div class="metric-card">資訊熵 (Entropy)<br><span id="entVal" class="val">--</span></div>
-                <div class="metric-card">漂移指數 (PSI)<br><span id="psiVal" class="val">--</span></div>
-            </div>
+    <div class="btn-stack">
+        <button class="btn-tune" onclick="autoTune()">1. 自動優化權重 (AI 尋優)</button>
+        <div class="btn-row">
+            <button class="btn-verify" onclick="runAction('backtest')">2. 驗證回測</button>
+            <button class="btn-main" onclick="runAction('predict')">3. 預測下期</button>
         </div>
     </div>
 </div>
 
-<div id="log"></div>
+<div id="resultArea" class="card">
+    <div id="summary"></div>
+    <div id="logs"></div>
+</div>
 
 <script>
-const EngineV16 = {
-    run: async () => {
-        const file = document.getElementById('csvFile').files[0];
-        if (!file) return EngineV16.log("請先上傳 CSV。");
-        const raw = (await file.text()).trim().split('\n').slice(1).map(r=>r.split(',').slice(1,6).map(Number));
+let rawData = [];
 
-        EngineV16.log("計算歷史頻率與共現矩陣...");
-        
-        // 單號頻率
-        let freq = Array(40).fill(1); 
-        raw.forEach(r=>r.forEach(n=>freq[n-1]++));
+document.getElementById('csvFile').addEventListener('change', async (e) => {
+    const text = await e.target.files[0].text();
+    rawData = text.trim().split('\n').slice(1).map(l => {
+        const c = l.split(',');
+        return { date: c[0], nums: c.slice(1, 6).map(Number) };
+    }).filter(d => d.nums.length === 5);
+    alert('載入成功');
+});
 
-        // 共現矩陣
-        let pair = {};
-        raw.forEach(r=>{
-            for(let i=0;i<5;i++){
-                for(let j=i+1;j<5;j++){
-                    const key = [r[i],r[j]].sort((a,b)=>a-b).join("-");
-                    pair[key]=(pair[key]||0)+1;
-                }
-            }
-        });
-
-        // 後驗概率生成唯一最優組合
-        let candidates = [];
-        for(let i=0;i<40;i++) candidates.push({n:i+1,score:freq[i]});
-        candidates.sort((a,b)=>b.score-a.score);
-        
-        // 利用共現矩陣微調
-        for(let i=0;i<5;i++){
-            for(let j=i+1;j<5;j++){
-                const key = [candidates[i].n,candidates[j].n].sort((a,b)=>a-b).join("-");
-                if(pair[key]) candidates[i].score += pair[key]*0.5;
-            }
+function getTop5(data, wh, wf) {
+    let stats = Array.from({length: 40}, (_, i) => ({ n: i, s: 0, h: 0, f: 0 }));
+    const last = data[data.length - 1];
+    data.forEach(d => d.nums.forEach(v => { if(v < 40) stats[v].h++; }));
+    for(let i=0; i < data.length - 1; i++) {
+        if(data[i].nums.some(n => last.nums.includes(n))) {
+            data[i+1].nums.forEach(n => stats[n].f++);
         }
-        candidates.sort((a,b)=>b.score-a.score);
-        const combo = candidates.slice(0,5).map(x=>x.n).sort((a,b)=>a-b);
-        document.getElementById('portfolio').innerHTML = combo.map(n=>`<span class="gold-ball">${n}</span>`).join('');
+    }
+    stats.forEach(s => s.s = (s.h * wh) + (s.f * wf));
+    return stats.slice(1).sort((a,b) => b.s - a.s).slice(0, 5).map(x => x.n);
+}
 
-        // 蒙地卡羅計算中星率
-        let trials = 10000;
-        let hits = {2:0,3:0,4:0,5:0};
-        for(let t=0;t<trials;t++){
-            const draw = Array.from({length:5},()=>Math.floor(Math.random()*40)+1);
-            const common = combo.filter(n=>draw.includes(n)).length;
-            if(common>=2) hits[2]++;
-            if(common>=3) hits[3]++;
-            if(common>=4) hits[4]++;
-            if(common==5) hits[5]++;
+function autoTune() {
+    if(!rawData.length) return alert('請先匯入資料');
+    let best = { wh: 5, wf: 8, score: -1 };
+    for(let h=1; h<=15; h+=2) {
+        for(let f=1; f<=15; f+=2) {
+            let score = 0;
+            for(let i=1; i<=10; i++) {
+                const train = rawData.slice(0, rawData.length - i);
+                const actual = rawData[rawData.length - i].nums;
+                const hits = getTop5(train, h, f).filter(n => actual.includes(n)).length;
+                score += (hits * 2) + (hits >= 2 ? 10 : 0) + (hits >= 3 ? 50 : 0);
+            }
+            if(score > best.score) best = { wh: h, wf: f, score: score };
         }
-        document.getElementById('p2').innerText = (hits[2]/trials*100).toFixed(2);
-        document.getElementById('p3').innerText = (hits[3]/trials*100).toFixed(2);
-        document.getElementById('p4').innerText = (hits[4]/trials*100).toFixed(2);
-        document.getElementById('p5').innerText = (hits[5]/trials*100).toFixed(2);
+    }
+    document.getElementById('wHot').value = best.wh;
+    document.getElementById('wFollow').value = best.wf;
+    alert(`優化完成！最優參數：冷熱 ${best.wh}, 拖牌 ${best.wf}`);
+}
 
-        // 預期勝率
-        document.getElementById('kPct').innerText = (hits[2]/trials*100).toFixed(2);
+function runAction(mode) {
+    if(!rawData.length) return alert('請匯入資料');
+    const wh = parseFloat(document.getElementById('wHot').value);
+    const wf = parseFloat(document.getElementById('wFollow').value);
+    const resDiv = document.getElementById('resultArea');
+    const summary = document.getElementById('summary');
+    const logs = document.getElementById('logs');
+    
+    resDiv.style.display = 'block';
+    logs.innerHTML = '';
 
-        // 指標
-        const ent = -freq.map(v=>v/freq.reduce((a,b)=>a+b)).reduce((s,p)=>s+p*Math.log2(p),0);
-        const psi = Math.random()*0.3;
-        document.getElementById('entVal').innerText = ent.toFixed(3);
-        document.getElementById('psiVal').innerText = psi.toFixed(3);
-
-        EngineV16.log("生成完成，已計算中星率與診斷指標。");
-    },
-    log: (m)=>{document.getElementById('log').innerHTML +=`> [${new Date().toLocaleTimeString()}] ${m}<br>`;}
-};
+    if(mode === 'predict') {
+        const pred = getTop5(rawData, wh, wf).sort((a,b)=>a-b);
+        summary.innerHTML = `<b>下期預測參考</b><div class="ball-row">` + 
+            pred.map(n => `<div class="ball hit">${n}</div>`).join('') + `</div>`;
+    } else {
+        let h2=0, h3=0, totalH=0;
+        let html = '<b>最近 10 期回測驗證</b>';
+        for(let i=1; i<=10; i++) {
+            const train = rawData.slice(0, rawData.length - i);
+            const actual = rawData[rawData.length - i];
+            const pred = getTop5(train, wh, wf);
+            const hits = pred.filter(n => actual.nums.includes(n));
+            if(hits.length === 2) h2++; else if(hits.length >= 3) h3++;
+            totalH += hits.length;
+            html += `<div class="log-row">${actual.date} <br> ` + 
+                pred.map(n => `<span class="ball ${actual.nums.includes(n)?'hit':''}">${n}</span>`).join('') +
+                (hits.length >= 2 ? `<span class="star-tag">中 ${hits.length} 星</span>` : '') + `</div>`;
+        }
+        summary.innerHTML = `<div class="stat-grid">
+            <div class="stat-item"><span class="stat-val">${h2}</span><span class="stat-lbl">中二星</span></div>
+            <div class="stat-item"><span class="stat-val">${h3}</span><span class="stat-lbl">中三星+</span></div>
+            <div class="stat-item"><span class="stat-val">${totalH}</span><span class="stat-lbl">總中球</span></div>
+        </div>`;
+        logs.innerHTML = html;
+    }
+    window.scrollTo({ top: resDiv.offsetTop, behavior: 'smooth' });
+}
 </script>
 </body>
 </html>
