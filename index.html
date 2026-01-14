@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>539 回測系統｜每期必出手版</title>
+<title>539 回測系統｜集中結構優化版</title>
 <style>
 body { font-family: Arial; padding: 20px; }
 table { border-collapse: collapse; margin-top: 10px; }
@@ -14,7 +14,7 @@ th { background: #eee; }
 </head>
 <body>
 
-<h2>539 回測系統（每期必出手）</h2>
+<h2>539 回測系統（≥3 / ≥4 集中優化）</h2>
 <input type="file" id="csvFile" accept=".csv">
 <br><button onclick="run()">執行回測</button>
 
@@ -43,22 +43,14 @@ function run(){
       const hist=d.slice(0,i);
       const act=d[i];
 
-      // === 計 Gap ===
-      const gap={};
-      for(let n=1;n<=39;n++) gap[n]=0;
+      const gap={}, freq={}, score={};
+      for(let n=1;n<=39;n++){ gap[n]=0; freq[n]=0; }
+
       hist.forEach(dr=>{
         for(let n=1;n<=39;n++) gap[n]++;
-        dr.nums.forEach(n=>gap[n]=0);
+        dr.nums.forEach(n=>{ gap[n]=0; freq[n]++; });
       });
 
-      // === 計 熱度 ===
-      const freq={};
-      hist.slice(-10).forEach(dr=>{
-        dr.nums.forEach(n=>freq[n]=(freq[n]||0)+1);
-      });
-
-      // === 每顆號碼評分 ===
-      const score={};
       for(let n=1;n<=39;n++){
         let s=0;
         if(gap[n]>=15) s+=3;
@@ -72,12 +64,11 @@ function run(){
         score[n]=s;
       }
 
-      // === 取前12顆 ===
+      // ⭐ 只取前 10 顆
       const pool=Object.keys(score)
         .sort((a,b)=>score[b]-score[a])
-        .slice(0,12).map(Number);
+        .slice(0,10).map(Number);
 
-      // === 組合 ===
       const combos=[];
       for(let a=0;a<pool.length;a++)
       for(let b=a+1;b<pool.length;b++)
@@ -85,9 +76,24 @@ function run(){
       for(let e=c+1;e<pool.length;e++)
       for(let f=e+1;f<pool.length;f++){
         const p=[pool[a],pool[b],pool[c],pool[e],pool[f]];
-        let odd=p.filter(n=>n%2).length;
         let ps=p.reduce((x,n)=>x+score[n],0);
+
+        // 奇偶
+        const odd=p.filter(n=>n%2).length;
         if(odd===2||odd===3) ps+=2;
+
+        // ⭐ 尾數群聚
+        const tails={};
+        p.forEach(n=>tails[n%10]=(tails[n%10]||0)+1);
+        Object.values(tails).forEach(v=>{
+          if(v===2) ps+=3;
+          if(v>=3) ps+=6;
+        });
+
+        // ⭐ 總和
+        const sum=p.reduce((x,n)=>x+n,0);
+        if(sum>=70 && sum<=110) ps+=3;
+
         combos.push({p, ps});
       }
 
