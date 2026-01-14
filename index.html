@@ -13,12 +13,9 @@
 }
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: #1e293b;
-    margin: 0;
-    padding: 20px;
+    background: var(--bg); color: #1e293b; margin: 0; padding: 20px;
 }
-.container { max-width: 1000px; margin: 0 auto; }
+.container { max-width: 1100px; margin: 0 auto; }
 .header {
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
@@ -46,11 +43,12 @@ button {
 .stat-label { font-size: 12px; color: #64748b; margin-top: 5px; }
 
 .table-container { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 600px; }
-th { background: #f1f5f9; padding: 10px; }
-td { padding: 8px; border-bottom: 1px solid #e5e7eb; }
+table { width: 100%; border-collapse: collapse; min-width: 800px; }
+th { background: #f1f5f9; padding: 12px; font-size: 14px; text-align: left; }
+td { padding: 10px; border-bottom: 1px solid #e5e7eb; font-size: 14px; vertical-align: top; }
 
 .hit2 { color: var(--success); font-weight: bold; }
+.match { background: #22c55e !important; color: white !important; border-color: #16a34a !important; }
 .warn-banner {
     background: #fef2f2; border: 1px solid #fee2e2;
     color: var(--danger); padding: 12px;
@@ -58,23 +56,21 @@ td { padding: 8px; border-bottom: 1px solid #e5e7eb; }
     text-align: center; font-weight: bold;
 }
 .num-tag {
-    display: inline-block;
-    border: 1px solid #cbd5e1;
-    border-radius: 4px;
-    padding: 2px 6px;
-    margin: 2px;
-    font-family: monospace;
+    display: inline-block; border: 1px solid #cbd5e1;
+    border-radius: 4px; padding: 2px 6px; margin: 2px;
+    font-family: monospace; background: #fff;
 }
+.draw-tag { background: #64748b; color: white; border-color: #475569; }
 </style>
 </head>
 
 <body>
 <div class="container">
     <div class="header">
-        <h2>539 策略回測（專攻 2 星）</h2>
+        <h2>📊 539 策略回測（含開獎對比）</h2>
         <div>
             <input type="file" id="csvFile" accept=".csv">
-            <button onclick="run()">執行分析</button>
+            <button onclick="run()">分析回測</button>
         </div>
     </div>
 
@@ -82,15 +78,14 @@ td { padding: 8px; border-bottom: 1px solid #e5e7eb; }
     <div id="summary" class="grid"></div>
 
     <div class="card table-container">
-        <h3>回測 LOG</h3>
+        <h3>歷史回測詳情</h3>
         <div id="log"></div>
     </div>
 </div>
 
 <script>
 function parseCSV(text) {
-    const rows = text.trim().split('\n').slice(1);
-    return rows.map(r => {
+    return text.trim().split('\n').slice(1).map(r => {
         const p = r.split(',');
         return { date: p[0], nums: p.slice(1).map(Number) };
     });
@@ -98,7 +93,7 @@ function parseCSV(text) {
 
 function run() {
     const f = document.getElementById('csvFile').files[0];
-    if (!f) return alert('請先上傳 CSV');
+    if (!f) return alert('請上傳 CSV');
     const r = new FileReader();
     r.onload = e => simulate(parseCSV(e.target.result));
     r.readAsText(f);
@@ -109,8 +104,7 @@ function buildPool(data, i) {
     const freq = {};
     hist.forEach(d => d.nums.forEach(n => freq[n] = (freq[n] || 0) + 1));
     const hot = Object.keys(freq).filter(n => freq[n] >= 2).map(Number);
-
-    const pool = [...new Set(hot)];
+    let pool = [...new Set(hot)];
     for (let n = 1; pool.length < 25 && n <= 39; n++) {
         if (!pool.includes(n)) pool.push(n);
     }
@@ -120,7 +114,6 @@ function buildPool(data, i) {
 function generatePicks(pool, need = 10) {
     const picks = [];
     let tries = 0;
-
     while (picks.length < need && tries < 500) {
         tries++;
         const c = [];
@@ -132,54 +125,46 @@ function generatePicks(pool, need = 10) {
         const sum = c.reduce((a,b)=>a+b,0);
         if ((odd === 2 || odd === 3) && sum >= 70 && sum <= 115) {
             const key = c.slice().sort((a,b)=>a-b).join(',');
-            if (!picks.some(p => p.join(',') === key)) {
-                picks.push(c.sort((a,b)=>a-b));
-            }
+            if (!picks.some(p => p.join(',') === key)) picks.push(c.sort((a,b)=>a-b));
         }
     }
     return picks;
 }
 
 function simulate(data) {
-    let hit2 = 0;
-    let no2 = 0;
-    let rows = '';
+    let hit2 = 0, no2 = 0, rows = '';
 
     for (let i = 10; i < data.length; i++) {
         const target = data[i].nums;
         const pool = buildPool(data, i);
         const picks = generatePicks(pool, 10);
-
         let best = 0;
-        picks.forEach(p => {
+
+        // 計算最佳命中並標記匹配號碼
+        const picksHtml = picks.map(p => {
             const h = p.filter(n => target.includes(n)).length;
             best = Math.max(best, h);
-        });
+            return `<div>${p.map(n => 
+                `<span class="num-tag ${target.includes(n) ? 'match' : ''}">${n}</span>`
+            ).join('')}</div>`;
+        }).join('');
 
-        if (best >= 2) {
-            hit2++;
-            no2 = 0;
-        } else {
-            no2++;
-        }
+        if (best >= 2) { hit2++; no2 = 0; } else { no2++; }
 
         rows = `
         <tr>
-            <td>${data[i].date}</td>
-            <td class="${best>=2?'hit2':''}">${best}</td>
-            <td>${picks.map(p => p.map(n=>`<span class="num-tag">${n}</span>`).join('')).join('<br>')}</td>
+            <td><strong>${data[i].date}</strong></td>
+            <td>${target.map(n => `<span class="num-tag draw-tag">${n}</span>`).join('')}</td>
+            <td class="${best>=2?'hit2':''}">${best} 星</td>
+            <td>${picksHtml}</td>
         </tr>` + rows;
     }
 
     const total = data.length - 10;
     document.getElementById('summary').innerHTML = `
-        <div class="stat-box">
-            <div class="stat-val">${total}</div>
-            <div class="stat-label">回測期數</div>
-        </div>
+        <div class="stat-box"><div class="stat-val">${total}</div><div class="stat-label">回測期數</div></div>
         <div class="stat-box" style="border-bottom:3px solid var(--success)">
-            <div class="stat-val">${(hit2/total*100).toFixed(1)}%</div>
-            <div class="stat-label">≥2 命中率</div>
+            <div class="stat-val">${(hit2/total*100).toFixed(1)}%</div><div class="stat-label">≥2 命中率</div>
         </div>
     `;
 
@@ -188,7 +173,7 @@ function simulate(data) {
 
     document.getElementById('log').innerHTML =
         `<table>
-            <tr><th>日期</th><th>最佳命中</th><th>10 組出手</th></tr>
+            <tr><th>日期</th><th>開獎號碼</th><th>結果</th><th>10 組預測 (綠色為中獎)</th></tr>
             ${rows}
         </table>`;
 }
