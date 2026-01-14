@@ -2,151 +2,172 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>539 策略回測與預測（整合穩定版）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>539 策略回測系統 PRO</title>
 <style>
-body { font-family: Arial; padding: 20px; }
-table { border-collapse: collapse; margin-top: 10px; }
-td, th { border: 1px solid #ccc; padding: 4px 6px; text-align: center; }
-.hit2 { background: #d0f0d0; }
-.hit3 { background: #90e090; font-weight: bold; }
-.warn { color: red; font-weight: bold; }
+    :root {
+        --primary: #2563eb;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --bg: #f8fafc;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: #1e293b; margin: 0; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    
+    /* Header & Control */
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; }
+    
+    input[type="file"] { font-size: 14px; }
+    button { background: var(--primary); color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: opacity 0.2s; }
+    button:hover { opacity: 0.9; }
+
+    /* Stats Grid */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .stat-box { padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #e2e8f0; }
+    .stat-val { font-size: 24px; font-weight: bold; color: var(--primary); }
+    .stat-label { font-size: 12px; color: #64748b; margin-top: 5px; }
+
+    /* Prediction Card */
+    .predict-card { background: #eff6ff; border: 1px solid #bfdbfe; }
+    .num-tag { display: inline-block; background: white; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 8px; margin: 2px; font-family: monospace; }
+
+    /* Table Style */
+    .table-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 500px; }
+    th { background: #f1f5f9; text-align: left; padding: 12px; font-size: 14px; }
+    td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+    
+    .hit2 { color: var(--success); }
+    .hit3 { background: #dcfce7; font-weight: bold; color: #166534; }
+    .warn-banner { background: #fef2f2; border: 1px solid #fee2e2; color: var(--danger); padding: 15px; border-radius: 8px; margin-bottom: 20px; font-weight: bold; text-align: center; }
 </style>
 </head>
 <body>
 
-<h2>539 回測 / 策略模擬系統（穩定整合版）</h2>
+<div class="container">
+    <div class="header">
+        <h2>📊 539 策略回測與預測</h2>
+        <div>
+            <input type="file" id="csvFile" accept=".csv">
+            <button onclick="run()">執行分析</button>
+        </div>
+    </div>
 
-<input type="file" id="csvFile" accept=".csv">
-<button onclick="run()">執行回測</button>
+    <div id="warn"></div>
 
-<div id="summary"></div>
-<div id="warn"></div>
-<div id="next"></div>
-<div id="log"></div>
+    <div id="summary" class="grid"></div>
+
+    <div id="next" class="card predict-card" style="display:none;"></div>
+
+    <div class="card table-container">
+        <h3>歷史回測紀錄</h3>
+        <div id="log"></div>
+    </div>
+</div>
 
 <script>
+// --- 原有邏輯保持不變 ---
 function parseCSV(text) {
-  return text.trim().split('\n').slice(1).map(l => {
-    const p = l.split(',');
-    return { date: p[0], nums: p.slice(1).map(Number) };
-  });
+    return text.trim().split('\n').slice(1).map(l => {
+        const p = l.split(',');
+        return { date: p[0], nums: p.slice(1).map(Number) };
+    });
 }
 
 function run() {
-  const f = document.getElementById('csvFile').files[0];
-  if (!f) return alert('請上傳 CSV');
-
-  const r = new FileReader();
-  r.onload = e => simulate(parseCSV(e.target.result));
-  r.readAsText(f);
+    const f = document.getElementById('csvFile').files[0];
+    if (!f) return alert('請上傳 CSV');
+    const r = new FileReader();
+    r.onload = e => simulate(parseCSV(e.target.result));
+    r.readAsText(f);
 }
 
 function buildPool(data, i) {
-  const hist = data.slice(i - 10, i);
-
-  const freq = {};
-  hist.forEach(d => d.nums.forEach(n => freq[n] = (freq[n] || 0) + 1));
-  const hot = Object.keys(freq).filter(n => freq[n] >= 2).map(Number);
-
-  const lastSeen = {};
-  data.slice(0, i).forEach((d, idx) => d.nums.forEach(n => lastSeen[n] = idx));
-  const cold = Object.keys(lastSeen)
-    .filter(n => i - lastSeen[n] >= 10)
-    .map(Number);
-
-  let pool = [...new Set([...hot, ...cold])].filter(n => n >= 1 && n <= 39);
-
-  for (let n = 1; pool.length < 20 && n <= 39; n++) {
-    if (!pool.includes(n)) pool.push(n);
-  }
-  return pool;
+    const hist = data.slice(i - 10, i);
+    const freq = {};
+    hist.forEach(d => d.nums.forEach(n => freq[n] = (freq[n] || 0) + 1));
+    const hot = Object.keys(freq).filter(n => freq[n] >= 2).map(Number);
+    const lastSeen = {};
+    data.slice(0, i).forEach((d, idx) => d.nums.forEach(n => lastSeen[n] = idx));
+    const cold = Object.keys(lastSeen).filter(n => i - lastSeen[n] >= 10).map(Number);
+    let pool = [...new Set([...hot, ...cold])].filter(n => n >= 1 && n <= 39);
+    for (let n = 1; pool.length < 20 && n <= 39; n++) { if (!pool.includes(n)) pool.push(n); }
+    return pool;
 }
 
 function generatePicks(pool, count = 10) {
-  let picks = [];
-  let idx = 0;
-
-  while (picks.length < count) {
-    let c = [];
-    for (let k = 0; k < pool.length && c.length < 5; k++) {
-      const n = pool[(idx + k * 3) % pool.length];
-      if (!c.includes(n)) c.push(n);
+    let picks = [];
+    let idx = 0;
+    while (picks.length < count) {
+        let c = [];
+        for (let k = 0; k < pool.length && c.length < 5; k++) {
+            const n = pool[(idx + k * 3) % pool.length];
+            if (!c.includes(n)) c.push(n);
+        }
+        idx++;
+        const odd = c.filter(n => n % 2).length;
+        const sum = c.reduce((a,b)=>a+b,0);
+        if ((odd === 2 || odd === 3) && sum >= 70 && sum <= 115) {
+            const key = c.slice().sort((a,b)=>a-b).join(',');
+            if (!picks.some(p => p.join(',') === key)) picks.push(c.sort((a,b)=>a-b));
+        }
     }
-    idx++;
-
-    const odd = c.filter(n => n % 2).length;
-    const sum = c.reduce((a,b)=>a+b,0);
-
-    if ((odd === 2 || odd === 3) && sum >= 70 && sum <= 115) {
-      const key = c.slice().sort((a,b)=>a-b).join(',');
-      if (!picks.some(p => p.join(',') === key))
-        picks.push(c.sort((a,b)=>a-b));
-    }
-  }
-  return picks;
+    return picks;
 }
 
+// --- UI 渲染優化 ---
 function simulate(data) {
-  let hit2 = 0, hit3 = 0, hit4 = 0;
-  let no3 = 0;
-  let rows = '';
+    let hit2 = 0, hit3 = 0, hit4 = 0, no3 = 0, rows = '';
+    for (let i = 10; i < data.length; i++) {
+        const target = data[i].nums;
+        const pool = buildPool(data, i);
+        const picks = generatePicks(pool, 10);
+        let best = 0;
+        picks.forEach(p => {
+            const h = p.filter(n => target.includes(n)).length;
+            best = Math.max(best, h);
+        });
 
-  for (let i = 10; i < data.length; i++) {
-    const target = data[i].nums;
-    const pool = buildPool(data, i);
-    const picks = generatePicks(pool, 10);
+        if (best >= 2) hit2++;
+        if (best >= 3) hit3++;
+        if (best >= 4) hit4++;
+        no3 = (best < 3) ? no3 + 1 : 0;
 
-    let best = 0;
-    picks.forEach(p => {
-      const h = p.filter(n => target.includes(n)).length;
-      best = Math.max(best, h);
-    });
+        rows = `<tr class="${best>=3?'hit3':''}">
+            <td>${data[i].date}</td>
+            <td class="${best>=2?'hit2':''}">${best}</td>
+            <td>${picks.map(p=>`<div>${p.map(n=>`<span class="num-tag">${n}</span>`).join('')}</div>`).join('')}</td>
+        </tr>` + rows;
+    }
 
-    if (best >= 2) hit2++;
-    if (best >= 3) hit3++;
-    if (best >= 4) hit4++;
-    if (best < 3) no3++; else no3 = 0;
+    const total = data.length - 10;
+    document.getElementById('summary').innerHTML = `
+        <div class="stat-box"><div class="stat-val">${total}</div><div class="stat-label">回測期數</div></div>
+        <div class="stat-box"><div class="stat-val">${(hit2/total*100).toFixed(1)}%</div><div class="stat-label">≥2 命中率</div></div>
+        <div class="stat-box" style="border-bottom: 3px solid var(--success)"><div class="stat-val">${(hit3/total*100).toFixed(1)}%</div><div class="stat-label">≥3 命中率</div></div>
+        <div class="stat-box"><div class="stat-val">${(hit4/total*100).toFixed(1)}%</div><div class="stat-label">≥4 命中率</div></div>
+    `;
 
-    rows += `<tr class="${best>=3?'hit3':best>=2?'hit2':''}">
-      <td>${data[i].date}</td>
-      <td>${best}</td>
-      <td>${picks.map(p=>'['+p.join(' ')+']').join('<br>')}</td>
-    </tr>`;
-  }
-
-  const total = data.length - 10;
-
-  document.getElementById('summary').innerHTML = `
-    <h3>回測結果</h3>
-    可回測期數：${total}<br>
-    出手期數：${total}<br>
-    ≥2：${(hit2/total*100).toFixed(1)}%<br>
-    ≥3：${(hit3/total*100).toFixed(1)}%<br>
-    ≥4：${(hit4/total*100).toFixed(1)}%
-  `;
-
-  document.getElementById('warn').innerHTML =
-    no3 >= 20 ? `<div class="warn">⚠ 已連續 ${no3} 期未出 ≥3，建議停手</div>` : '';
-
-  document.getElementById('log').innerHTML =
-    `<table>
-      <tr><th>日期</th><th>最佳命中</th><th>出手 10 組</th></tr>
-      ${rows}
-    </table>`;
-
-  predictNext(data);
+    document.getElementById('warn').innerHTML = no3 >= 20 ? `<div class="warn-banner">⚠ 已連續 ${no3} 期未達 3 星，系統建議停手</div>` : '';
+    document.getElementById('log').innerHTML = `<table><tr><th>日期</th><th>最佳</th><th>出手組別 (10組)</th></tr>${rows}</table>`;
+    
+    predictNext(data);
 }
 
 function predictNext(data) {
-  const pool = buildPool(data, data.length);
-  const result = generatePicks(pool, 10);
-
-  document.getElementById('next').innerHTML = `
-    <h3>📌 下期模擬預測（固定 10 組）</h3>
-    ${result.map((p,i)=>`組${i+1}：[${p.join(' ')}]`).join('<br>')}
-  `;
+    const pool = buildPool(data, data.length);
+    const result = generatePicks(pool, 10);
+    const el = document.getElementById('next');
+    el.style.display = 'block';
+    el.innerHTML = `
+        <h3 style="margin-top:0">📌 下期模擬預測</h3>
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:10px;">
+            ${result.map((p,i)=>`<div><strong>組${i+1}:</strong><br>${p.map(n=>`<span class="num-tag">${n}</span>`).join('')}</div>`).join('')}
+        </div>
+    `;
 }
 </script>
-
 </body>
 </html>
