@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>539策略回測 Demo v19</title>
+<title>539策略回測 Demo v20</title>
 <style>
 html, body { margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:#0B2545; color:#F0F0F0; }
 .container { display:flex; flex-direction:column; align-items:center; padding:10px; min-height:100vh; box-sizing:border-box; }
@@ -26,7 +26,7 @@ td { background:#142850; }
 </head>
 <body>
 <div class="container">
-<h1>539策略回測 Demo v19</h1>
+<h1>539策略回測 Demo v20</h1>
 
 <div class="card">
 <h2>上傳歷史 CSV</h2>
@@ -36,9 +36,9 @@ td { background:#142850; }
 
 <div class="card">
 <h2>策略模組</h2>
-<p>L1：高頻號碼優先 + 最近熱門號碼 + 冷號 + 區間微調（固定生成）</p>
-<p>L2_new2：近期熱門加權 + 冷號補充 + 高頻號碼 + 區間調整（固定生成）</p>
-<p>L3：區間選號 + 最近熱門號碼 + 高頻號碼 + 冷號微調（固定生成）</p>
+<p>L1：高頻號碼 + 最近熱門號碼 + 冷號 + 區間微調 + 最近三期熱號優先</p>
+<p>L2_new2：近期熱門加權 + 冷號補充 + 高頻號碼 + 區間調整 + 區域均衡</p>
+<p>L3：區間選號 + 最近熱門號碼 + 高頻號碼 + 冷號微調 + 防止號碼集中</p>
 </div>
 
 <div class="card">
@@ -85,7 +85,6 @@ let csvData = [];
 let backtestResults = [];
 let fixedPredictions = {}; // 下期固定預測號碼
 
-// CSV 上傳
 document.getElementById('csvFile').addEventListener('change', function(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -97,8 +96,8 @@ document.getElementById('csvFile').addEventListener('change', function(e){
       return {date, numbers:[n1,n2,n3,n4,n5]};
     });
     document.getElementById('csvCount').innerText = `CSV 筆數：${csvData.length}`;
-    generateFixedPredictions();
-    updateNextPrediction();
+    fixedPredictions={};
+    document.getElementById('nextPrediction').innerText='預測號碼: --';
   };
   reader.readAsText(file);
 });
@@ -164,16 +163,17 @@ function runBacktest(){
     backtestResults.push({date:row.date,actual:row.numbers,strategy:'L3',pred:l3,hits:hitCount(row.numbers,l3)});
   }
   document.getElementById('backtestCount').innerText=`回測筆數：${backtestResults.length}`;
+  generateNextPrediction();
   updateLog();
-  updateNextPrediction();
 }
 
-// 生成下期固定預測號碼
-function generateFixedPredictions(){
+// 生成下期固定預測號碼（回測完成後）
+function generateNextPrediction(){
   const freq = computeFrequency(csvData);
   fixedPredictions['L1']=generateFixedL1(freq);
   fixedPredictions['L2_new2']=generateFixedL2(freq);
   fixedPredictions['L3']=generateFixedL3(freq);
+  updateNextPrediction();
 }
 
 // 更新 Log
