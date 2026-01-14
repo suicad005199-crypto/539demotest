@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>539 回測系統｜含命中期明細</title>
+<title>539 回測系統｜三刀選盤版</title>
 <style>
 body { font-family: Arial, sans-serif; padding: 20px; }
 button { padding: 8px 16px; margin: 10px 0; }
@@ -15,7 +15,7 @@ th { background: #eee; }
 </head>
 <body>
 
-<h2>539 模擬系統（含命中日期 / 號碼）</h2>
+<h2>539 模擬系統（三刀選盤｜命中期數驗證）</h2>
 
 <input type="file" id="csvFile" accept=".csv">
 <br>
@@ -27,17 +27,14 @@ th { background: #eee; }
 <script>
 function parseCSV(text) {
   return text.trim().split("\n").slice(1).map(r => {
-    const parts = r.split(",");
-    return {
-      date: parts[0],
-      nums: parts.slice(1).map(Number)
-    };
+    const p = r.split(",");
+    return { date: p[0], nums: p.slice(1).map(Number) };
   });
 }
 
 function runBacktest() {
   const file = document.getElementById("csvFile").files[0];
-  if (!file) return alert("請先上傳 CSV");
+  if (!file) return alert("請上傳 CSV");
 
   const reader = new FileReader();
   reader.onload = () => {
@@ -45,6 +42,7 @@ function runBacktest() {
 
     let total = 0, played = 0;
     let hit2 = 0, hit3 = 0, hit4 = 0;
+    let hitPeriods = 0;
     const hitRecords = [];
 
     for (let i = 30; i < draws.length; i++) {
@@ -52,53 +50,40 @@ function runBacktest() {
       const history = draws.slice(0, i);
       const actual = draws[i];
 
-      // ===== Gap =====
+      // ===== Gap（極冷 ≥20）=====
       const gap = {};
       for (let n = 1; n <= 39; n++) gap[n] = 0;
       history.forEach(d => {
         for (let n = 1; n <= 39; n++) gap[n]++;
         d.nums.forEach(n => gap[n] = 0);
       });
+      const cold = Object.keys(gap).filter(n => gap[n] >= 20).map(Number);
+      if (cold.length === 0) continue;
 
-      // ===== 熱號（近7期 ≥3次）=====
+      // ===== 熱號（近5期 ≥3次）=====
       const freq = {};
-      history.slice(-7).forEach(d => d.nums.forEach(n => freq[n] = (freq[n] || 0) + 1));
+      history.slice(-5).forEach(d => d.nums.forEach(n => freq[n] = (freq[n] || 0) + 1));
       const hot = Object.keys(freq).filter(n => freq[n] >= 3).map(Number);
+      if (hot.length === 0) continue;
 
-      // ===== 冷號（Gap ≥15）=====
-      const cold = Object.keys(gap).filter(n => gap[n] >= 15).map(Number);
+      // ===== 連續性（同一顆熱號連2期）=====
+      const last = history[history.length - 1].nums;
+      const prev = history[history.length - 2].nums;
+      const continuousHot = hot.filter(n => last.includes(n) && prev.includes(n));
+      if (continuousHot.length === 0) continue;
 
-      // ===== 盤型門檻 =====
-      const recent2 = history.slice(-2).flatMap(d => d.nums);
-      const hotOverlap = hot.filter(n => recent2.includes(n)).length;
-      if (!(hotOverlap >= 2 && cold.length >= 2)) continue;
-
+      // === 出手 ===
       played++;
 
-      // ===== 產生預測組 =====
+      // ===== 產生預測組（集中共振）=====
       const preds = [];
-
-      for (let a = 0; a < hot.length && preds.length < 12; a++)
-        for (let b = a + 1; b < hot.length; b++)
-          for (let c = b + 1; c < hot.length; c++)
-            for (let d = c + 1; d < hot.length; d++)
-              for (let e = 0; e < cold.length; e++) {
-                const p = [hot[a], hot[b], hot[c], hot[d], cold[e]];
-                if (new Set(p).size === 5) preds.push(p);
-                if (preds.length >= 12) break;
-              }
-
-      if (preds.length < 12) {
-        for (let a = 0; a < hot.length && preds.length < 12; a++)
-          for (let b = a + 1; b < hot.length; b++)
-            for (let c = b + 1; c < hot.length; c++)
-              for (let d = 0; d < cold.length; d++)
-                for (let e = d + 1; e < cold.length; e++) {
-                  const p = [hot[a], hot[b], hot[c], cold[d], cold[e]];
-                  if (new Set(p).size === 5) preds.push(p);
-                  if (preds.length >= 12) break;
-                }
-      }
+      for (let a = 0; a < continuousHot.length && preds.length < 12; a++)
+        for (let b = 0; b < hot.length && preds.length < 12; b++)
+          for (let c = b + 1; c < hot.length && preds.length < 12; c++)
+            for (let d = 0; d < cold.length && preds.length < 12; d++) {
+              const p = [continuousHot[a], hot[b], hot[c], cold[d], cold[(d+1)%cold.length]];
+              if (new Set(p).size === 5) preds.push(p);
+            }
 
       let maxHit = 0;
       preds.forEach(p => {
@@ -106,17 +91,17 @@ function runBacktest() {
         if (h > maxHit) maxHit = h;
       });
 
-      if (maxHit >= 2) hit2++;
-      if (maxHit >= 3) hit3++;
-      if (maxHit >= 4) hit4++;
-
       if (maxHit >= 2) {
+        hit2++;
+        hitPeriods++;
         hitRecords.push({
           date: actual.date,
           nums: actual.nums.join(", "),
           hit: maxHit
         });
       }
+      if (maxHit >= 3) hit3++;
+      if (maxHit >= 4) hit4++;
     }
 
     document.getElementById("output").innerHTML = `
@@ -124,27 +109,21 @@ function runBacktest() {
       <b>出手期數：</b>${played}<br>
       <span class="highlight">出手比例：${(played / total * 100).toFixed(1)}%</span>
       <hr>
+      <b>命中期數（≥2）：</b>${hitPeriods}<br>
       出手期 ≥2：${played ? (hit2 / played * 100).toFixed(1) : 0}%<br>
       出手期 ≥3：${played ? (hit3 / played * 100).toFixed(1) : 0}%<br>
       <span class="highlight">出手期 ≥4：${played ? (hit4 / played * 100).toFixed(1) : 0}%</span>
     `;
 
-    // ===== 命中清單 =====
     let html = `<h3>命中期明細（≥2）</h3>
-    <table>
-    <tr><th>日期</th><th>開獎號碼</th><th>最高命中</th></tr>`;
+    <table><tr><th>日期</th><th>開獎號碼</th><th>最高命中</th></tr>`;
     hitRecords.forEach(r => {
-      html += `<tr>
-        <td>${r.date}</td>
-        <td>${r.nums}</td>
-        <td>中 ${r.hit}</td>
-      </tr>`;
+      html += `<tr><td>${r.date}</td><td>${r.nums}</td><td>中 ${r.hit}</td></tr>`;
     });
     html += "</table>";
 
     document.getElementById("hitTable").innerHTML = html;
   };
-
   reader.readAsText(file);
 }
 </script>
