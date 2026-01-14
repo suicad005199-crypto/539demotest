@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>539策略回測 Demo v16</title>
+<title>539策略回測 Demo v17</title>
 <style>
 html, body { margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:#0B2545; color:#F0F0F0; }
 .container { display:flex; flex-direction:column; align-items:center; padding:10px; min-height:100vh; box-sizing:border-box; }
@@ -26,7 +26,7 @@ td { background:#142850; }
 </head>
 <body>
 <div class="container">
-<h1>539策略回測 Demo v16</h1>
+<h1>539策略回測 Demo v17</h1>
 
 <div class="card">
 <h2>上傳歷史 CSV</h2>
@@ -83,6 +83,7 @@ td { background:#142850; }
 <script>
 let csvData = [];
 let backtestResults = [];
+let fixedPredictions = {}; // 下期固定預測號碼
 
 // CSV 上傳
 document.getElementById('csvFile').addEventListener('change', function(e){
@@ -96,6 +97,7 @@ document.getElementById('csvFile').addEventListener('change', function(e){
       return {date, numbers:[n1,n2,n3,n4,n5]};
     });
     document.getElementById('csvCount').innerText = `CSV 筆數：${csvData.length}`;
+    generateFixedPredictions();
     updateNextPrediction();
   };
   reader.readAsText(file);
@@ -110,65 +112,74 @@ function computeFrequency(data){
   return freq;
 }
 
-// 隨機微調函數
+// 回測策略生成（可隨機微調）
 function randomAdjust(nums){
-  return nums.map(n=>Math.max(1,Math.min(39, n + (Math.random()<0.5?-1:1))));
+  return nums.map(n=>Math.max(1,Math.min(39,n + (Math.random()<0.5?-1:1)))).slice(0,5);
 }
 
-// 策略生成函數
-function generatePredictionL1(freq){ let sorted = freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c - a.c); let high = sorted.slice(0,10).map(x=>x.n); let recentHot = csvData.slice(-5).flatMap(r=>r.numbers).map(Number); let low = sorted.slice(-10).map(x=>x.n); let nums = [high[0], recentHot[0], low[0], high[1], recentHot[1]]; return randomAdjust(nums).slice(0,5); }
-function generatePredictionL2_new2(freq){ let sorted = freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c - a.c); let high = sorted.slice(0,10).map(x=>x.n); let low = sorted.slice(-10).map(x=>x.n); let recentHot = csvData.slice(-5).flatMap(r=>r.numbers).map(Number); let nums = [high[0], high[1], low[0], recentHot[0], recentHot[1]]; return randomAdjust(nums).slice(0,5); }
-function generatePredictionL3(freq){ let sorted = freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c - a.c); let ranges = [[1,13],[14,26],[27,39]]; let nums=[]; ranges.forEach(r=>{ let pick=sorted.filter(x=>x.n>=r[0]&&x.n<=r[1]).map(x=>x.n); if(pick.length>0) nums.push(pick[0]); }); let recentHot = csvData.slice(-5).flatMap(r=>r.numbers).map(Number); nums.push(recentHot[0], recentHot[1]); return randomAdjust(nums).slice(0,5); }
+// 策略函數（固定生成函數無隨機）
+function generateFixedL1(freq){ let sorted=freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c-a.c); let high=sorted.slice(0,10).map(x=>x.n); let recentHot=csvData.slice(-5).flatMap(r=>r.numbers).map(Number); let low=sorted.slice(-10).map(x=>x.n); let nums=[high[0],recentHot[0],low[0],high[1],recentHot[1]]; return nums.slice(0,5); }
+function generateFixedL2(freq){ let sorted=freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c-a.c); let high=sorted.slice(0,10).map(x=>x.n); let low=sorted.slice(-10).map(x=>x.n); let recentHot=csvData.slice(-5).flatMap(r=>r.numbers).map(Number); let nums=[high[0],high[1],low[0],recentHot[0],recentHot[1]]; return nums.slice(0,5); }
+function generateFixedL3(freq){ let sorted=freq.map((c,n)=>({n,c})).filter(x=>x.n>0).sort((a,b)=>b.c-a.c); let ranges=[[1,13],[14,26],[27,39]]; let nums=[]; ranges.forEach(r=>{let pick=sorted.filter(x=>x.n>=r[0]&&x.n<=r[1]).map(x=>x.n); if(pick.length>0) nums.push(pick[0]);}); let recentHot=csvData.slice(-5).flatMap(r=>r.numbers).map(Number); nums.push(recentHot[0],recentHot[1]); return nums.slice(0,5); }
+
+// 回測策略生成（可隨機微調）
+function generatePredictionL1(freq){ return randomAdjust(generateFixedL1(freq)); }
+function generatePredictionL2_new2(freq){ return randomAdjust(generateFixedL2(freq)); }
+function generatePredictionL3(freq){ return randomAdjust(generateFixedL3(freq)); }
 
 // 計算命中數
-function hitCount(actual, pred){ return pred.filter(n => actual.includes(n.toString())).length; }
+function hitCount(actual,pred){ return pred.filter(n=>actual.includes(n.toString())).length; }
 
-// 回測 (滾動歷史)
+// 回測（滾動歷史）
 function runBacktest(){
   backtestResults=[];
   for(let i=1;i<csvData.length;i++){
-    const histData = csvData.slice(0,i); // 當期之前資料
+    const histData = csvData.slice(0,i);
     const freq = computeFrequency(histData);
-    const row = csvData[i]; // 當期
-    const l1 = generatePredictionL1(freq);
-    const l2 = generatePredictionL2_new2(freq);
-    const l3 = generatePredictionL3(freq);
-    backtestResults.push({date:row.date, actual:row.numbers, strategy:'L1', pred:l1, hits:hitCount(row.numbers,l1)});
-    backtestResults.push({date:row.date, actual:row.numbers, strategy:'L2_new2', pred:l2, hits:hitCount(row.numbers,l2)});
-    backtestResults.push({date:row.date, actual:row.numbers, strategy:'L3', pred:l3, hits:hitCount(row.numbers,l3)});
+    const row = csvData[i];
+    const l1=generatePredictionL1(freq);
+    const l2=generatePredictionL2_new2(freq);
+    const l3=generatePredictionL3(freq);
+    backtestResults.push({date:row.date,actual:row.numbers,strategy:'L1',pred:l1,hits:hitCount(row.numbers,l1)});
+    backtestResults.push({date:row.date,actual:row.numbers,strategy:'L2_new2',pred:l2,hits:hitCount(row.numbers,l2)});
+    backtestResults.push({date:row.date,actual:row.numbers,strategy:'L3',pred:l3,hits:hitCount(row.numbers,l3)});
   }
   document.getElementById('backtestCount').innerText=`回測筆數：${backtestResults.length}`;
   updateLog();
   updateNextPrediction();
 }
 
+// 生成下期固定預測號碼
+function generateFixedPredictions(){
+  const freq = computeFrequency(csvData);
+  fixedPredictions['L1']=generateFixedL1(freq);
+  fixedPredictions['L2_new2']=generateFixedL2(freq);
+  fixedPredictions['L3']=generateFixedL3(freq);
+}
+
 // 更新 Log
 function updateLog(){
-  const select = document.getElementById('strategySelect').value;
-  const logBody = document.getElementById('backtestLog');
+  const select=document.getElementById('strategySelect').value;
+  const logBody=document.getElementById('backtestLog');
   logBody.innerHTML='';
-  const filtered = backtestResults.filter(r=>r.strategy===select).slice(-30).reverse();
+  const filtered=backtestResults.filter(r=>r.strategy===select).slice(-30).reverse();
   filtered.forEach(r=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${r.date}</td><td>${r.actual.join(',')}</td><td>${r.pred.join(',')}</td><td>${r.hits}</td>`;
     logBody.appendChild(tr);
   });
-  const recent5 = backtestResults.filter(r=>r.strategy===select).slice(-5);
-  const twoStarHits = recent5.filter(x=>x.hits>=2).length;
-  const rate = recent5.length>0?(twoStarHits/recent5.length*100).toFixed(1):'--';
+  const recent5=backtestResults.filter(r=>r.strategy===select).slice(-5);
+  const twoStarHits=recent5.filter(x=>x.hits>=2).length;
+  const rate=recent5.length>0?(twoStarHits/recent5.length*100).toFixed(1):'--';
   const rateSpan=document.getElementById('recent5Rate');
   rateSpan.innerText=`近5期命中率: ${rate}%`;
   rateSpan.className='rateDisplay '+(rate>=70?'rateHigh':'rateLow');
 }
 
-// 下期預測號碼 (使用全部歷史)
+// 下期預測號碼 Panel
 function updateNextPrediction(){
-  const select = document.getElementById('strategySelectPrediction').value;
-  const freq = computeFrequency(csvData);
-  let pred=[];
-  if(select==='L1') pred=generatePredictionL1(freq);
-  else if(select==='L2_new2') pred=generatePredictionL2_new2(freq);
-  else if(select==='L3') pred=generatePredictionL3(freq);
+  const select=document.getElementById('strategySelectPrediction').value;
+  const pred=fixedPredictions[select]||[];
   document.getElementById('nextPrediction').innerText=`預測號碼: ${pred.join(',')}`;
 }
 </script>
