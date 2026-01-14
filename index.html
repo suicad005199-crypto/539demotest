@@ -2,48 +2,51 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>539 多策略回測系統</title>
+<title>539 多策略回測與預測</title>
 <style>
 body { font-family: Arial; padding: 20px; }
-table { border-collapse: collapse; margin-top: 10px; }
-td, th { border: 1px solid #ccc; padding: 4px 6px; text-align: center; }
-.best { background:#ffd966; font-weight:bold; }
+table { border-collapse: collapse; margin-top: 12px; width:100%; }
+td, th { border: 1px solid #ccc; padding: 6px; text-align: center; }
+.best { background:#ffe699; font-weight:bold; }
+.strategy { background:#f4f4f4; font-weight:bold; }
+pre { margin:0; }
 </style>
 </head>
 <body>
 
-<h2>539 多策略回測 / 勝率比較</h2>
+<h2>539 多策略回測 / 預測系統</h2>
 <input type="file" id="csvFile" accept=".csv">
 <button onclick="run()">執行回測</button>
 
-<div id="result"></div>
+<div id="summary"></div>
+<div id="strategies"></div>
 
 <script>
 function parseCSV(text){
   return text.trim().split('\n').slice(1).map(l=>{
     const p=l.split(',');
-    return {date:p[0],nums:p.slice(1).map(Number)};
+    return {date:p[0], nums:p.slice(1).map(Number)};
   });
 }
 
 function run(){
   const f=document.getElementById('csvFile').files[0];
-  if(!f)return alert('請上傳 CSV');
+  if(!f) return alert('請上傳 CSV');
   const r=new FileReader();
   r.onload=e=>simulate(parseCSV(e.target.result));
   r.readAsText(f);
 }
 
 function simulate(data){
-  const strategies={
-    A:{name:'穩定盤',hit2:0,hit3:0,hit4:0},
-    B:{name:'轉折盤',hit2:0,hit3:0,hit4:0},
-    C:{name:'尾部盤',hit2:0,hit3:0,hit4:0}
-  };
+  const strategies=[
+    {key:'S1',name:'穩定熱冷盤（保留）',hit2:0,hit3:0,hit4:0,predict:[]},
+    {key:'S2',name:'熱號釋放盤',hit2:0,hit3:0,hit4:0,predict:[]},
+    {key:'S3',name:'深 Gap 反彈盤',hit2:0,hit3:0,hit4:0,predict:[]},
+    {key:'S4',name:'低頻冷號覆蓋盤',hit2:0,hit3:0,hit4:0,predict:[]}
+  ];
 
-  const total=data.length-20;
-
-  for(let i=20;i<data.length;i++){
+  const start=20;
+  for(let i=start;i<data.length;i++){
     const hist=data.slice(i-20,i);
     const target=data[i].nums;
 
@@ -55,65 +58,86 @@ function simulate(data){
 
     const hot=Object.keys(freq).filter(n=>freq[n]>=2).map(Number);
     const cold=Object.keys(freq).filter(n=>freq[n]<=1).map(Number);
-    const gap10=Object.keys(lastSeen).filter(n=>20-lastSeen[n]>=10).map(Number);
-    const gap15=Object.keys(lastSeen).filter(n=>20-lastSeen[n]>=15).map(Number);
-    const gap20=Object.keys(lastSeen).filter(n=>20-lastSeen[n]>=20).map(Number);
+    const gap=n=>Object.keys(lastSeen).filter(x=>20-lastSeen[x]>=n).map(Number);
 
-    function evalPick(p){
-      return p.filter(n=>target.includes(n)).length;
+    const evalHit=p=>p.filter(n=>target.includes(n)).length;
+
+    // S1
+    if(hot.length>=2 && gap(10).length>=1){
+      const p=[hot[0],hot[1],gap(10)[0],hot[2]||gap(10)[1],hot[3]||gap(10)[2]].slice(0,5);
+      const h=evalHit(p);
+      if(h>=2)strategies[0].hit2++;
+      if(h>=3)strategies[0].hit3++;
+      if(h>=4)strategies[0].hit4++;
     }
 
-    // 策略 A
-    if(hot.length>=2 && gap10.length>=1){
-      const p=[hot[0],hot[1],gap10[0],gap10[1]||hot[2],hot[3]||gap10[2]].slice(0,5);
-      const h=evalPick(p);
-      if(h>=2)strategies.A.hit2++;
-      if(h>=3)strategies.A.hit3++;
-      if(h>=4)strategies.A.hit4++;
+    // S2
+    if(hot.length>=3){
+      const p=[hot[0],hot[1],hot[2],gap(8)[0],gap(8)[1]||hot[3]].slice(0,5);
+      const h=evalHit(p);
+      if(h>=2)strategies[1].hit2++;
+      if(h>=3)strategies[1].hit3++;
+      if(h>=4)strategies[1].hit4++;
     }
 
-    // 策略 B
-    if(gap15.length>=1 && hot.length>=2){
-      const p=[gap15[0],gap15[1]||hot[0],hot[1],hot[2],hot[3]].slice(0,5);
-      const h=evalPick(p);
-      if(h>=2)strategies.B.hit2++;
-      if(h>=3)strategies.B.hit3++;
-      if(h>=4)strategies.B.hit4++;
+    // S3
+    if(gap(15).length>=2){
+      const p=[gap(15)[0],gap(15)[1],hot[0],hot[1],hot[2]].slice(0,5);
+      const h=evalHit(p);
+      if(h>=2)strategies[2].hit2++;
+      if(h>=3)strategies[2].hit3++;
+      if(h>=4)strategies[2].hit4++;
     }
 
-    // 策略 C
-    if(gap20.length>=2 && cold.length>=3){
-      const p=[gap20[0],gap20[1],cold[0],cold[1],cold[2]];
-      const h=evalPick(p);
-      if(h>=2)strategies.C.hit2++;
-      if(h>=3)strategies.C.hit3++;
-      if(h>=4)strategies.C.hit4++;
+    // S4
+    if(cold.length>=3){
+      const p=[cold[0],cold[1],cold[2],gap(20)[0],gap(20)[1]].slice(0,5);
+      const h=evalHit(p);
+      if(h>=2)strategies[3].hit2++;
+      if(h>=3)strategies[3].hit3++;
+      if(h>=4)strategies[3].hit4++;
     }
   }
 
-  // 找 ≥3 勝率最高
-  let bestKey=null, bestRate=0;
-  Object.keys(strategies).forEach(k=>{
-    const r=strategies[k].hit3/total;
-    if(r>bestRate){bestRate=r;bestKey=k;}
+  const total=data.length-start;
+
+  // 排序（≥3）
+  strategies.forEach(s=>s.rate3=s.hit3/total);
+  strategies.sort((a,b)=>b.rate3-a.rate3);
+
+  // 下期預測（用最後10期）
+  const hist=data.slice(-10);
+  const freq={};
+  hist.forEach(d=>d.nums.forEach(n=>freq[n]=(freq[n]||0)+1));
+  const hot=Object.keys(freq).filter(n=>freq[n]>=2).map(Number);
+  const all=[...Array(39).keys()].map(n=>n+1);
+
+  strategies.forEach(s=>{
+    let pool=[...new Set([...hot,...all])];
+    while(s.predict.length<5){
+      const n=pool[Math.floor(Math.random()*pool.length)];
+      if(!s.predict.includes(n)) s.predict.push(n);
+    }
+    s.predict.sort((a,b)=>a-b);
   });
 
-  let html=`<h3>策略回測結果（共 ${total} 期）</h3>
-  <table>
-  <tr><th>策略</th><th>≥2</th><th>≥3</th><th>≥4</th></tr>`;
+  // 顯示
+  let html=`<h3>策略回測排名（共 ${total} 期）</h3><table>
+  <tr><th>排名</th><th>策略</th><th>≥2</th><th>≥3</th><th>≥4</th><th>下期預測</th></tr>`;
 
-  Object.keys(strategies).forEach(k=>{
-    const s=strategies[k];
-    html+=`<tr class="${k===bestKey?'best':''}">
-      <td>${s.name}${k===bestKey?'（保留）':''}</td>
+  strategies.forEach((s,i)=>{
+    html+=`<tr class="${i===0?'best':''}">
+      <td>${i+1}</td>
+      <td>${s.name}</td>
       <td>${(s.hit2/total*100).toFixed(1)}%</td>
       <td>${(s.hit3/total*100).toFixed(1)}%</td>
       <td>${(s.hit4/total*100).toFixed(1)}%</td>
+      <td><pre>[${s.predict.join(' ')}]</pre></td>
     </tr>`;
   });
-
   html+=`</table>`;
-  document.getElementById('result').innerHTML=html;
+
+  document.getElementById('strategies').innerHTML=html;
 }
 </script>
 </body>
