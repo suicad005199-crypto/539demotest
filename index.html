@@ -3,191 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>539 專業回測系統</title>
+    <title>539 全策略分析儀</title>
     <style>
         :root {
-            --bg-dark: #0a192f;      /* 藏藍底色 */
-            --card-blue: #172a45;    /* 資訊卡片色 */
-            --accent: #c5a059;       /* 銅金強調色 */
-            --highlight: #64ffda;    /* 數據分析色 */
+            --bg: #0a192f;
+            --card: #172a45;
+            --gold: #c5a059;
+            --cyan: #64ffda;
             --text: #e6f1ff;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background-color: var(--bg-dark); color: var(--text);
+            font-family: -apple-system, sans-serif;
+            background-color: var(--bg); color: var(--text);
             margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh;
-            overflow: hidden; touch-action: manipulation;
         }
-        /* 頂部標題 */
-        .header { padding: 25px 20px 10px; text-align: left; }
-        .header h1 { font-size: 1.2rem; margin: 0; color: var(--accent); letter-spacing: 1px; }
+        .header { padding: 20px; text-align: center; }
+        .header h1 { font-size: 1.2rem; color: var(--gold); margin: 0; letter-spacing: 2px; }
+
+        .scroll-area { flex-grow: 1; overflow-y: auto; padding: 10px 15px; }
+
+        .upload-section {
+            background: rgba(197, 160, 89, 0.1); border: 1px dashed var(--gold);
+            border-radius: 12px; padding: 15px; text-align: center; margin-bottom: 15px;
+        }
         
-        /* 數據上傳區 */
-        .upload-area {
-            background: var(--card-blue); margin: 15px; padding: 20px;
-            border-radius: 16px; border: 1px dashed #233554; text-align: center;
+        /* 策略牌組顯示卡片 */
+        .strategy-card {
+            background: var(--card); border-radius: 16px; padding: 15px;
+            margin-bottom: 15px; border-left: 4px solid var(--gold);
         }
-        #fileInput { display: none; }
-        .upload-btn {
-            background: transparent; border: 1px solid var(--accent);
-            color: var(--accent); padding: 10px 20px; border-radius: 8px; font-size: 0.9rem;
+        .strat-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px; border-bottom: 1px solid #233554; padding-bottom: 8px;
         }
+        .strat-title { font-weight: bold; font-size: 0.95rem; color: var(--gold); }
+        .strat-rate { font-size: 0.8rem; color: var(--cyan); }
 
-        /* 回測統計數據 */
-        .stats-container {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 15px;
-        }
-        .stat-card {
-            background: var(--card-blue); padding: 15px; border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-        .stat-name { font-size: 0.7rem; color: #8892b0; margin-bottom: 5px; }
-        .stat-value { font-size: 1.1rem; font-weight: bold; color: var(--highlight); }
-
-        /* 中間號碼展示區 */
-        .display-main {
-            flex-grow: 1; display: flex; flex-direction: column;
-            justify-content: center; align-items: center;
-        }
-        .ball-row { display: flex; gap: 10px; margin-bottom: 20px; }
+        .ball-row { display: flex; gap: 8px; justify-content: flex-start; }
         .ball {
-            width: 48px; height: 48px; background: var(--accent); border-radius: 50%;
-            color: var(--bg-dark); display: flex; align-items: center; justify-content: center;
-            font-weight: 800; font-size: 1.2rem; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            animation: bounce 0.4s ease-out;
+            width: 42px; height: 42px; background: var(--gold); border-radius: 50%;
+            color: var(--bg); display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 1.1rem;
         }
 
-        /* 底部按鈕控制 (iOS 單手操作熱區) */
-        .bottom-nav {
-            padding: 30px 20px 50px; background: linear-gradient(transparent, var(--bg-dark));
-        }
+        .footer-nav { padding: 20px; background: var(--bg); }
         .main-btn {
-            width: 100%; padding: 20px; border-radius: 40px; border: none;
-            background: var(--accent); color: var(--bg-dark);
-            font-size: 1.1rem; font-weight: bold; box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+            width: 100%; padding: 18px; border-radius: 35px; border: none;
+            background: var(--gold); color: var(--bg); font-size: 1.1rem; font-weight: bold;
         }
-        .main-btn:active { transform: scale(0.96); opacity: 0.9; }
-        .main-btn:disabled { background: #444; color: #8892b0; box-shadow: none; }
-
-        @keyframes bounce {
-            0% { transform: translateY(20px); opacity: 0; }
-            100% { transform: translateY(0); opacity: 1; }
-        }
+        .main-btn:disabled { background: #444; color: #8892b0; }
+        input[type="file"] { display: none; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h1>539 STRATEGY ANALYZER</h1>
-    <p id="dataCount" style="font-size: 0.75rem; color: #8892b0; margin: 5px 0 0;">等待歷史數據載入...</p>
+    <h1>539 多策略預測面板</h1>
+    <div id="status" style="font-size: 0.7rem; color: #8892b0; margin-top: 5px;">請先上傳歷史數據</div>
 </div>
 
-<div class="upload-area">
-    <label for="fileInput" class="upload-btn">📂 上傳 CSV 歷史檔</label>
-    <input type="file" id="fileInput" accept=".csv" onchange="processCSV(this)">
+<div class="scroll-area">
+    <div class="upload-section">
+        <label style="color: var(--gold); cursor: pointer;">
+            📂 點擊上傳 CSV 歷史檔
+            <input type="file" accept=".csv" onchange="initApp(this)">
+        </label>
+    </div>
+
+    <div id="resultsContainer">
+        </div>
 </div>
 
-<div class="stats-container">
-    <div class="stat-card"><div class="stat-name">隨機策略 >2星率</div><div class="stat-value" id="r-random">0.00%</div></div>
-    <div class="stat-card"><div class="stat-name">熱門策略 >2星率</div><div class="stat-value" id="r-hot">0.00%</div></div>
-    <div class="stat-card"><div class="stat-name">冷門策略 >2星率</div><div class="stat-value" id="r-cold">0.00%</div></div>
-    <div class="stat-card"><div class="stat-name">3+2混合 >2星率</div><div class="stat-value" id="r-mix">0.00%</div></div>
-</div>
-
-<div class="display-main">
-    <div class="ball-row" id="ballRow"></div>
-    <p id="currentStrat" style="color: var(--accent); font-size: 0.85rem; letter-spacing: 1px;"></p>
-</div>
-
-<div class="bottom-nav">
-    <button id="runBtn" class="main-btn" onclick="generateAndAnalyze()" disabled>生成牌組並全量回測</button>
+<div class="footer-nav">
+    <button id="runBtn" class="main-btn" onclick="generateAll()" disabled>一次生成所有策略牌組</button>
 </div>
 
 <script>
-    let history = [];
-    const pools = {
-        hot: [1, 5, 8, 12, 17, 19, 23, 29, 34, 38, 39], 
-        cold: [2, 6, 11, 15, 20, 25, 30, 31, 37]
-    };
+    let historyData = [];
+    let stats = { hot: [], cold: [] };
+    let backtestRates = {};
 
-    function processCSV(input) {
+    function initApp(input) {
         const file = input.files[0];
         const reader = new FileReader();
         reader.onload = function(e) {
             const lines = e.target.result.split('\n');
-            history = lines.map(line => {
-                return line.split(',')
-                    .map(v => parseInt(v.trim()))
-                    .filter(n => !isNaN(n) && n >= 1 && n <= 39);
-            }).filter(arr => arr.length === 5);
-
-            if(history.length > 0) {
-                document.getElementById('dataCount').innerText = `已載入 ${history.length} 期數據，系統已就緒`;
+            historyData = lines.map(line => line.split(',').map(v => parseInt(v.trim())).filter(n => n >= 1 && n <= 39)).filter(arr => arr.length === 5);
+            
+            if (historyData.length > 0) {
+                analyzeHistory();
+                runGlobalBacktest();
+                document.getElementById('status').innerText = `已分析 ${historyData.length} 期數據`;
                 document.getElementById('runBtn').disabled = false;
-                runFullBacktest();
+                generateAll(); // 初始生成一次
             }
         };
         reader.readAsText(file);
     }
 
-    // 地毯式回測：計算每一種策略在所有歷史數據中的 >2星命中率
-    function runFullBacktest() {
-        const strats = ['random', 'hot', 'cold', 'mix'];
-        strats.forEach(s => {
-            let hitCount = 0;
-            // 為求準確，模擬 500 組不同組合去跑全歷史取平均
-            const simCount = 100; 
-            for(let i=0; i<simCount; i++) {
-                const pick = getPick(s);
-                history.forEach(actual => {
-                    const match = pick.filter(n => actual.includes(n)).length;
-                    if(match >= 2) hitCount++;
+    // 自動從 CSV 分析熱門與冷門號碼
+    function analyzeHistory() {
+        let counts = {};
+        historyData.flat().forEach(num => counts[num] = (counts[num] || 0) + 1);
+        let sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        stats.hot = sorted.slice(0, 12).map(i => parseInt(i[0]));
+        stats.cold = sorted.slice(-12).map(i => parseInt(i[0]));
+    }
+
+    // 預先計算全量回測命中率
+    function runGlobalBacktest() {
+        const types = ['random', 'hot', 'cold', 'mix'];
+        types.forEach(t => {
+            let hits = 0;
+            const simRounds = 100;
+            for(let i=0; i<simRounds; i++) {
+                const pick = getPick(t);
+                historyData.forEach(actual => {
+                    if (pick.filter(n => actual.includes(n)).length >= 2) hits++;
                 });
             }
-            const finalRate = ((hitCount / (history.length * simCount)) * 100).toFixed(2);
-            document.getElementById(`r-${s}`).innerText = `${finalRate}%`;
+            backtestRates[t] = ((hits / (historyData.length * simRounds)) * 100).toFixed(2);
         });
     }
 
     function getPick(type) {
-        if(type === 'random') return pickRandom(39, 5);
-        if(type === 'hot') return pickFrom(pools.hot, 5);
-        if(type === 'cold') return pickFrom(pools.cold, 5);
-        return [...pickFrom(pools.hot, 3), ...pickFrom(pools.cold, 2)];
+        const pickRand = (arr, n) => [...arr].sort(() => Math.random() - 0.5).slice(0, n);
+        const allNums = Array.from({length: 39}, (_, i) => i + 1);
+        
+        if (type === 'random') return pickRand(allNums, 5);
+        if (type === 'hot') return pickRand(stats.hot, 5);
+        if (type === 'cold') return pickRand(stats.cold, 5);
+        if (type === 'mix') return [...pickRand(stats.hot, 3), ...pickRand(stats.cold, 2)];
     }
 
-    function generateAndAnalyze() {
-        const strats = ['random', 'hot', 'cold', 'mix'];
-        const selected = strats[Math.floor(Math.random() * strats.length)];
-        const names = {random:'隨機策略', hot:'熱門策略', cold:'冷門策略', mix:'混合策略(3+2)'};
-        
-        document.getElementById('currentStrat').innerText = `目前運用：${names[selected]}`;
-        const finalNums = getPick(selected).sort((a,b)=>a-b);
-        
-        const container = document.getElementById('ballRow');
+    function generateAll() {
+        const container = document.getElementById('resultsContainer');
         container.innerHTML = '';
-        finalNums.forEach((n, i) => {
-            setTimeout(() => {
-                const b = document.createElement('div');
-                b.className = 'ball';
-                b.innerText = n < 10 ? '0'+n : n;
-                container.appendChild(b);
-            }, i * 80);
+        const configs = [
+            { id: 'random', name: '隨機策略', desc: '全號碼隨機分佈' },
+            { id: 'hot', name: '熱門策略', desc: '根據歷史高頻號碼' },
+            { id: 'cold', name: '冷門策略', desc: '根據歷史低頻號碼' },
+            { id: 'mix', name: '混合策略 (3+2)', desc: '熱門號 x3 + 冷門號 x2' }
+        ];
+
+        configs.forEach(conf => {
+            const nums = getPick(conf.id).sort((a,b) => a-b);
+            const html = `
+                <div class="strategy-card">
+                    <div class="strat-header">
+                        <div>
+                            <div class="strat-title">${conf.name}</div>
+                            <div style="font-size:0.7rem; color:#8892b0">${conf.desc}</div>
+                        </div>
+                        <div class="strat-rate">>2星回測率: ${backtestRates[conf.id]}%</div>
+                    </div>
+                    <div class="ball-row">
+                        ${nums.map(n => `<div class="ball">${n < 10 ? '0'+n : n}</div>`).join('')}
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
         });
     }
-
-    function pickRandom(max, count) {
-        let res = [];
-        while(res.length < count) {
-            let r = Math.floor(Math.random() * max) + 1;
-            if(!res.includes(r)) res.push(r);
-        }
-        return res;
-    }
-
-    function pickFrom(pool, count) {
-        return [...pool].sort(() => Math.random() - 0.5).slice(0, count);
-    }
 </script>
+
 </body>
 </html>
