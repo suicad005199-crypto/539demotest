@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>預測模擬系統 - 優化版</title>
+<title>Demo v1</title>
 <style>
 body { margin:0; font-family:-apple-system,BlinkMacSystemFont; background:#0f1a2b; color:#fff;}
 .panel { padding:16px; border-bottom:1px solid #24324a; }
@@ -25,7 +25,7 @@ button { background:#1e3a5f; color:#fff; }
   <button onclick="runBacktest()">執行回測</button>
 </div>
 
-<!-- Panel 4 現在是 Panel 5 功能 -->
+<!-- Panel 4 現在是策略優化 -->
 <div class="panel">
   <h2>Panel 4｜策略參數優化 & 自動套用最佳 N</h2>
   <select id="optStrategySelect"></select>
@@ -33,7 +33,7 @@ button { background:#1e3a5f; color:#fff; }
   <div id="optResult"></div>
 </div>
 
-<!-- Panel 5 現在是 Panel 4 功能 -->
+<!-- Panel 5 現在是實戰預測 -->
 <div class="panel">
   <h2>Panel 5｜實戰預測（多策略加權）</h2>
   <button id="predictBtn" class="disabled" onclick="runLivePrediction()">產生預測號碼</button>
@@ -207,6 +207,7 @@ function runLivePrediction(){
 // ===== Panel 4 優化 =====
 function optimizeParams(){
   const key=document.getElementById("optStrategySelect").value
+  const selectedKey = key; // 記住目前選中的策略
   const strategy=strategies[key]
   const Nvalues=[5,6,7,8,9,10,11,12,13,14,15]
   let bestRate=0, bestN=0
@@ -214,7 +215,8 @@ function optimizeParams(){
   Nvalues.forEach(N=>{
     if(strategy.name==="熱號加權" || strategy.name==="奇偶平衡" || strategy.name==="連號模式") strategy.params.N=N
     if(strategy.name==="冷熱混合") strategy.params.hotN=N
-    runBacktest()
+
+    // 不重跑 runBacktest() 避免刷新選單
     const log=logs[key].slice(-10)
     const twoStar=log.filter(r=>r.hit>=2).length
     const rate=log.length?((twoStar/log.length)*100).toFixed(1):0
@@ -225,6 +227,10 @@ function optimizeParams(){
   if(strategy.name==="熱號加權" || strategy.name==="奇偶平衡" || strategy.name==="連號模式") bestParams[key]={N:bestN}
   else if(strategy.name==="冷熱混合") bestParams[key]={hotN:bestN}
   document.getElementById("optResult").innerHTML=resultHTML
+
+  // 恢復選單選中策略
+  document.getElementById("optStrategySelect").value = selectedKey
+
   optimizationDone=true
   document.getElementById("predictBtn").classList.remove("disabled")
 }
