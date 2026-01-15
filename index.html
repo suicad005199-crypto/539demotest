@@ -5,15 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>必中 v1</title>
 <style>
-body{margin:0;font-family:-apple-system,BlinkMacSystemFont;background:#0f1a2b;color:#fff}
-h1{text-align:center;color:#00ff99;margin:12px 0}
+body{margin:0;font-family:-apple-system;background:#0f1a2b;color:#fff}
+h1{text-align:center;color:#00ff99;margin:10px 0}
 .panel{padding:14px;border-bottom:1px solid #24324a}
-h2{font-size:17px;margin-bottom:10px}
-button,input{width:100%;padding:12px;border-radius:10px;border:none;font-size:15px}
+button,input{width:100%;padding:12px;border-radius:10px;border:none}
 button{background:#1e3a5f;color:#fff}
 .log{background:#16253d;border-radius:10px;padding:10px;margin-bottom:10px}
-.small{font-size:13px;opacity:.85}
-.strategy{margin-top:6px}
+.small{font-size:13px;opacity:.9}
 </style>
 </head>
 <body>
@@ -21,99 +19,137 @@ button{background:#1e3a5f;color:#fff}
 <h1>必中 v1</h1>
 
 <div class="panel">
-  <h2>Panel 1｜CSV 上傳 & 回測</h2>
   <input type="file" id="csvInput" accept=".csv">
   <button onclick="runBacktest()">執行回測</button>
 </div>
 
 <div class="panel">
-  <h2>Panel 2｜近10期回測 Log</h2>
+  <h3>近10期回測 Log</h3>
   <div id="logPanel"></div>
 </div>
 
 <div class="panel">
-  <h2>Panel 3｜策略差異</h2>
-  <div id="diffPanel"></div>
-</div>
-
-<div class="panel">
-  <h2>Panel 4｜下一期預測</h2>
+  <h3>下一期預測</h3>
   <button onclick="predictNext()">產生預測</button>
   <div id="predictPanel"></div>
 </div>
 
 <script>
 let data=[], logs=[]
-const strategies={
-  hot:{name:"熱號",predict:h=>pick(h,10)},
-  cold:{name:"冷號",predict:h=>pick(h,10,true)},
-  mix:{name:"冷熱混合",predict:h=>[...pick(h,5),...pick(h,5,true)]},
-  seq:{name:"連號",predict:h=>pick(h,15).filter((n,i,a)=>a.includes(n+1))},
-  delay:{name:"延遲",predict:h=>[1,2,3,4,5,6,7,8,9,10].filter(n=>!h.slice(-5).flatMap(d=>d.numbers).includes(n))}
-}
 
 document.getElementById("csvInput").addEventListener("change",e=>{
   const r=new FileReader()
   r.onload=()=>data=r.result.trim().split(/\r?\n/).slice(1).map(l=>{
-    const c=l.split(",");return{date:c[0],numbers:c.slice(1).map(Number)}
+    const c=l.split(",")
+    return {date:c[0],numbers:c.slice(1).map(Number)}
   })
   r.readAsText(e.target.files[0])
 })
 
+/* ===== 策略定義 ===== */
+const strategies={
+  hot:{name:"熱號",predict:h=>rankByFreq(h,false)},
+  cold:{name:"冷號",predict:h=>rankByFreq(h,true)},
+  structural:{name:"結構平衡 × 延遲共現",predict:h=>structuralBalanced(h)}
+}
+
+/* ===== 回測 ===== */
 function runBacktest(){
   logs=[]
-  for(let i=3;i<data.length;i++){
-    const h=data.slice(0,i),a=data[i]
-    const entry={date:a.date,actual:a.numbers,strategies:{},final:[]}
+  for(let i=10;i<data.length;i++){
+    const hist=data.slice(0,i), act=data[i]
+    const row={date:act.date,actual:act.numbers,strategies:{}}
     for(const k in strategies){
-      const p=strategies[k].predict(h).slice(0,5)
-      entry.strategies[k]={nums:p,hit:p.filter(n=>a.numbers.includes(n)).length}
+      const p=strategies[k].predict(hist).slice(0,5)
+      row.strategies[k]={nums:p,hit:p.filter(n=>act.numbers.includes(n)).length}
     }
-    entry.final=Object.values(entry.strategies).flatMap(s=>s.nums)
-      .sort((a,b)=>entry.final?.filter(n=>n===b).length-entry.final?.filter(n=>n===a).length)
-      .slice(0,5)
-    logs.push(entry)
+    logs.push(row)
   }
   renderLogs()
-  renderDiff()
 }
 
 function renderLogs(){
-  const el=document.getElementById("logPanel");el.innerHTML=""
+  const el=document.getElementById("logPanel")
+  el.innerHTML=""
   logs.slice(-10).forEach(l=>{
-    let html=`<div class="log"><div>${l.date}</div>
+    let h=`<div class="log">
+      <div>${l.date}</div>
       <div class="small">開獎：${l.actual.join(" ")}</div>`
     for(const k in l.strategies){
       const s=l.strategies[k]
-      html+=`<div class="strategy small">${strategies[k].name}：${s.nums.join(" ")}（命中 ${s.hit}）</div>`
+      h+=`<div class="small">${strategies[k].name}：${s.nums.join(" ")}（命中 ${s.hit}）</div>`
     }
-    html+=`</div>`
-    el.innerHTML+=html
+    h+=`</div>`
+    el.innerHTML+=h
   })
 }
 
-function renderDiff(){
-  const el=document.getElementById("diffPanel");el.innerHTML=""
-  for(const k in strategies){
-    const hit=logs.slice(-10).filter(l=>l.strategies[k]?.hit>=2).length
-    el.innerHTML+=`<div class="small">${strategies[k].name}：2★率 ${(hit/10*100).toFixed(1)}%</div>`
-  }
-}
-
+/* ===== 下一期預測 ===== */
 function predictNext(){
-  const h=data
-  let html=""
+  const el=document.getElementById("predictPanel")
+  el.innerHTML=""
   for(const k in strategies){
-    const p=strategies[k].predict(h).slice(0,5)
-    html+=`<div class="small">${strategies[k].name}：${p.join(" ")}</div>`
+    const p=strategies[k].predict(data).slice(0,5)
+    el.innerHTML+=`<div class="small">${strategies[k].name}：${p.join(" ")}</div>`
   }
-  document.getElementById("predictPanel").innerHTML=html
 }
 
-function pick(h,n,rev){
+/* ===== 基礎工具 ===== */
+function rankByFreq(h,rev){
   const f={}
-  h.forEach(d=>d.numbers.forEach(x=>f[x]=(f[x]||0)+1))
-  return Object.keys(f).sort((a,b)=>rev?f[a]-f[b]:f[b]-f[a]).map(Number).slice(0,n)
+  h.forEach(d=>d.numbers.forEach(n=>f[n]=(f[n]||0)+1))
+  return Object.keys(f).sort((a,b)=>rev?f[a]-f[b]:f[b]-f[a]).map(Number)
+}
+function z(v,obj){
+  const arr=Object.values(obj)
+  const m=arr.reduce((a,b)=>a+b,0)/arr.length
+  const s=Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length)||1
+  return (v-m)/s
+}
+
+/* ===== 新增策略：結構平衡 × 延遲共現 ===== */
+function structuralBalanced(h){
+  const freq={}, lastSeen={}, co={}
+  const T=h.length
+
+  h.forEach((d,i)=>{
+    d.numbers.forEach(n=>{
+      freq[n]=(freq[n]||0)+1
+      lastSeen[n]=i
+    })
+  })
+
+  Object.keys(freq).forEach(n=>co[n]=0)
+  h.forEach(d=>{
+    d.numbers.forEach(a=>{
+      d.numbers.forEach(b=>{
+        if(a!==b) co[a]+=1
+      })
+    })
+  })
+
+  const stability={}, delay={}
+  Object.keys(freq).forEach(n=>{
+    stability[n]=freq[n]/T
+    delay[n]=T-(lastSeen[n]??0)
+  })
+
+  const score=n=>
+      0.40*z(stability[n],stability)
+    + 0.30*z(delay[n],delay)
+    + 0.30*z(co[n],co)
+
+  const ranked=Object.keys(freq).sort((a,b)=>score(b)-score(a)).map(Number)
+
+  /* 結構約束選號 */
+  const selected=[]
+  for(const n of ranked){
+    if(selected.length===0 || Math.max(...selected,n)-Math.min(...selected,n)>=10){
+      selected.push(n)
+    }
+    if(selected.length===5) break
+  }
+  return selected
 }
 </script>
 </body>
