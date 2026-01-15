@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>預測模擬系統 - 多策略升級版</title>
+<title>預測模擬系統 - 優化版</title>
 <style>
 body { margin:0; font-family:-apple-system,BlinkMacSystemFont; background:#0f1a2b; color:#fff;}
 .panel { padding:16px; border-bottom:1px solid #24324a; }
@@ -39,8 +39,8 @@ button { background:#1e3a5f; color:#fff; }
 
 <!-- Panel 4 -->
 <div class="panel">
-  <h2>Panel 4｜實戰預測（未來）</h2>
-  <button onclick="runLivePrediction()">多策略加權預測</button>
+  <h2>Panel 4｜實戰預測（多策略加權）</h2>
+  <button onclick="runLivePrediction()">產生預測號碼</button>
   <div id="liveResult"></div>
 </div>
 
@@ -56,12 +56,13 @@ button { background:#1e3a5f; color:#fff; }
 let data=[]
 let logs={}
 let bestParams={}
+let strategyWeights={}
 
-// ===== 多策略定義 =====
+// ===== 策略定義 =====
 const strategies = {
   weightedHot: {
     name:"熱號加權",
-    description:"取過去 N 期熱號加權，選前5高權重號碼",
+    description:"最近 N 期熱號加權，選前5高權重號碼",
     params:{N:15},
     predict(history, params={N:15}) {
       return pickTopWeighted(history.slice(-params.N),5)
@@ -69,7 +70,7 @@ const strategies = {
   },
   hotColdMix: {
     name:"冷熱混合",
-    description:"取最近 hotN 期熱號前3 + 過去 coldN 期冷號2",
+    description:"最近 hotN 期熱號 + 過去 coldN 期冷號組合",
     params:{hotN:10,coldN:20},
     predict(history, params={hotN:10,coldN:20}) {
       const hot = pickTopWeighted(history.slice(-params.hotN),3)
@@ -79,27 +80,23 @@ const strategies = {
   },
   oddEvenBalance: {
     name:"奇偶平衡",
-    description:"選號保持奇偶比例約2:3或3:2",
+    description:"保持奇偶比例約2:3或3:2",
     params:{N:15},
     predict(history, params={N:15}) {
       const top = pickTopWeighted(history.slice(-params.N),5)
       let odd = top.filter(n=>n%2===1)
       let even = top.filter(n=>n%2===0)
-      // 調整奇偶數量
       while(odd.length+even.length<5) { odd.length<even.length?odd.push(top[0]):even.push(top[0]) }
       return [...odd,...even].slice(0,5)
     }
   },
   consecutivePattern: {
     name:"連號模式",
-    description:"偏好連號出現的號碼",
+    description:"偏好連號組合",
     params:{N:20},
     predict(history, params={N:20}) {
       const freq={}
-      history.slice(-params.N).forEach(d=>{
-        d.numbers.forEach(n=>freq[n]=(freq[n]||0)+1)
-      })
-      // 找連號組
+      history.slice(-params.N).forEach(d=>d.numbers.forEach(n=>freq[n]=(freq[n]||0)+1))
       const sorted = Object.keys(freq).sort((a,b)=>freq[b]-freq[a]).map(Number)
       let result=[]
       for(let i=0;i<sorted.length;i++){
@@ -129,7 +126,10 @@ function parseCSV(text){
 // ===== 回測 =====
 function runBacktest(){
   logs={}
-  Object.keys(strategies).forEach(k=>logs[k]=[])
+  Object.keys(strategies).forEach(k=>{
+    logs[k]=[]
+    strategyWeights[k]=1 // 初始化權重
+  })
   for(let i=3;i<data.length;i++){
     const history=data.slice(0,i)
     const actual=data[i].numbers
@@ -166,6 +166,7 @@ function renderLogs(){
   })
   const rate=recentLogs.length?((twoStarHits/recentLogs.length)*100).toFixed(1):0
   container.innerHTML+=`<div class="log-item"><strong>近10期2星以上命中率: ${rate}%</strong></div>`
+  strategyWeights[key]=rate
 }
 
 // ===== Panel 3 =====
@@ -183,11 +184,14 @@ function renderStrategyDesc(){
 function runLivePrediction(){
   if(data.length===0) return
   const votes={}
+  // 加權投票
   Object.keys(strategies).forEach(k=>{
     const strategy=strategies[k]
     const params = bestParams[k] || strategy.params
     const nums=strategy.predict(data,params)
-    nums.forEach(n=>votes[n]=(votes[n]||0)+1)
+    nums.forEach(n=>{
+      votes[n]=(votes[n]||0)+strategyWeights[k] // 權重累加
+    })
   })
   const finalPrediction=Object.keys(votes).sort((a,b)=>votes[b]-votes[a]).slice(0,5).map(Number)
   document.getElementById("liveResult").innerHTML=`
@@ -208,9 +212,8 @@ function optimizeParams(){
   let bestRate=0, bestN=0
   let resultHTML=""
   Nvalues.forEach(N=>{
-    if(strategy.name==="熱號加權" || strategy.name==="奇偶平衡") strategy.params.N=N
+    if(strategy.name==="熱號加權" || strategy.name==="奇偶平衡" || strategy.name==="連號模式") strategy.params.N=N
     if(strategy.name==="冷熱混合") strategy.params.hotN=N
-    if(strategy.name==="連號模式") strategy.params.N=N
     runBacktest()
     const log=logs[key].slice(-10)
     const twoStar=log.filter(r=>r.hit>=2).length
