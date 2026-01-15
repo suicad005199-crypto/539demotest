@@ -55,7 +55,7 @@ button {
 
 <!-- Panel 2 -->
 <div class="panel">
-  <h2>Panel 2｜近 10 期回測 Log</h2>
+  <h2>Panel 2｜近 10 期回測 Log + 2星命中率%</h2>
   <select id="strategySelect" onchange="renderLogs()"></select>
   <div id="logContainer"></div>
 </div>
@@ -147,7 +147,11 @@ function renderLogs() {
 
   if (!logs[key]) return
 
-  logs[key].slice(-10).reverse().forEach(r => {
+  const recentLogs = logs[key].slice(-10).reverse()
+  let twoStarHits = 0
+
+  recentLogs.forEach(r => {
+    if (r.hit >= 2) twoStarHits++
     container.innerHTML += `
       <div class="log-item">
         <div>${r.date}</div>
@@ -157,6 +161,9 @@ function renderLogs() {
       </div>
     `
   })
+
+  const rate = recentLogs.length ? ((twoStarHits / recentLogs.length)*100).toFixed(1) : 0
+  container.innerHTML += `<div class="log-item"><strong>近10期2星以上命中率: ${rate}%</strong></div>`
 }
 
 /* ===== Panel 3 ===== */
