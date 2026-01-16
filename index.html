@@ -3,25 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>539 數據產生器</title>
+    <title>539 數據分析產生器</title>
     <style>
-        :root { --primary: #d32f2f; --bg: #f4f4f9; }
-        body { font-family: sans-serif; margin: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; }
+        :root { --primary: #d32f2f; --bg: #f4f4f9; --dark: #333; }
+        body { font-family: sans-serif; margin: 0; background: var(--bg); }
         
-        /* 置頂 Panel */
-        .top-panel { width: 100%; background: #333; color: white; padding: 15px; display: flex; justify-content: center; align-items: center; gap: 15px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .top-panel input[type="file"] { font-size: 0.9rem; }
+        /* 置頂面板 */
+        .top-panel { background: var(--dark); color: white; padding: 15px; display: flex; justify-content: center; align-items: center; gap: 15px; position: sticky; top: 0; z-index: 100; }
+        
+        /* 連號分布面板 */
+        .analysis-panel { background: #fff; border-bottom: 2px solid #ddd; padding: 15px; max-height: 200px; overflow-y: auto; }
+        .chart-title { font-size: 0.9rem; font-weight: bold; margin-bottom: 10px; color: #555; text-align: center; }
+        .chart-container { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+        .bar-item { display: flex; flex-direction: column; align-items: center; width: 30px; }
+        .bar { width: 15px; background: #4caf50; min-height: 2px; transition: height 0.3s; }
+        .label { font-size: 10px; margin-top: 4px; transform: rotate(-45deg); }
 
         /* 主內容區 */
-        .main { margin-top: 40px; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 500px; }
+        .main { margin: 20px auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
         button { padding: 10px 25px; font-size: 1rem; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: bold; }
-        
-        /* 號碼球樣式 */
-        .result { margin-top: 25px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-        .ball { width: 45px; height: 45px; line-height: 45px; background: #ffc107; border-radius: 50%; font-weight: bold; border: 2px solid #ffa000; font-size: 1.2rem; }
-        
-        /* 檔案資訊 */
-        #file-info { font-size: 0.85rem; color: #ccc; margin-top: 5px; }
+        .result { margin-top: 25px; display: flex; gap: 10px; justify-content: center; }
+        .ball { width: 40px; height: 40px; line-height: 40px; background: #ffc107; border-radius: 50%; font-weight: bold; border: 2px solid #ffa000; }
     </style>
 </head>
 <body>
@@ -29,55 +31,74 @@
 <div class="top-panel">
     <span>數據上傳 (CSV):</span>
     <input type="file" id="csvFile" accept=".csv" onchange="handleFile()">
-    <div id="file-info">未選取檔案</div>
+    <small id="file-info">未選取</small>
+</div>
+
+<div class="analysis-panel" id="analysisPanel">
+    <div class="chart-title">連號分佈統計 (CSV 數據分析)</div>
+    <div class="chart-container" id="chartContainer">
+        <p style="color: #999; font-size: 0.8rem;">請先上傳 CSV 檔案以分析數據</p>
+    </div>
 </div>
 
 <div class="main">
-    <h2>今彩 539 產生器</h2>
-    <p>點擊下方按鈕隨機產生一組號碼</p>
-    <button onclick="generateNumbers()">產生號碼</button>
+    <button onclick="generateNumbers()">產生隨機號碼</button>
     <div class="result" id="result"></div>
 </div>
 
 <script>
     let csvData = [];
 
-    // 處理檔案上傳
     function handleFile() {
-        const fileInput = document.getElementById('csvFile');
-        const info = document.getElementById('file-info');
-        const file = fileInput.files[0];
+        const file = document.getElementById('csvFile').files[0];
+        if (!file) return;
 
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const text = e.target.result;
-                csvData = text.split('\n').map(row => row.split(','));
-                info.innerText = `已讀取: ${file.name} (${csvData.length} 列)`;
-                console.log("數據已載入:", csvData);
-            };
-            reader.readAsText(file);
-        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const rows = e.target.result.split('\n').filter(row => row.trim() !== '');
+            // 轉換為數字陣列：假設 CSV 每列最後 5 欄是中獎號碼
+            csvData = rows.map(row => row.split(',').slice(-5).map(Number).sort((a,b)=>a-b));
+            document.getElementById('file-info').innerText = `已讀取 ${csvData.length} 筆`;
+            analyzeConsecutive();
+        };
+        reader.readAsText(file);
     }
 
-    // 產生號碼邏輯
+    function analyzeConsecutive() {
+        const freq = {};
+        csvData.forEach(nums => {
+            for (let i = 0; i < nums.length - 1; i++) {
+                if (nums[i+1] - nums[i] === 1) { // 判斷是否連號
+                    const key = `${nums[i]}-${nums[i+1]}`;
+                    freq[key] = (freq[key] || 0) + 1;
+                }
+            }
+        });
+
+        const container = document.getElementById('chartContainer');
+        container.innerHTML = '';
+        
+        Object.entries(freq).sort((a,b) => b[1] - a[1]).slice(0, 15).forEach(([pair, count]) => {
+            const item = document.createElement('div');
+            item.className = 'bar-item';
+            item.innerHTML = `
+                <div class="bar" style="height: ${count * 5}px" title="次數: ${count}"></div>
+                <div class="label">${pair}</div>
+            `;
+            container.appendChild(item);
+        });
+    }
+
     function generateNumbers() {
         const numbers = [];
         while(numbers.length < 5) {
             const r = Math.floor(Math.random() * 39) + 1;
             if(!numbers.includes(r)) numbers.push(r);
         }
-        
         numbers.sort((a, b) => a - b);
         
-        const resultDiv = document.getElementById('result');
-        resultDiv.innerHTML = '';
-        numbers.forEach(num => {
-            const ball = document.createElement('div');
-            ball.className = 'ball';
-            ball.innerText = num < 10 ? '0' + num : num;
-            resultDiv.appendChild(ball);
-        });
+        const resDiv = document.getElementById('result');
+        resDiv.innerHTML = numbers.map(n => `<div class="ball">${n < 10 ? '0'+n : n}</div>`).join('');
     }
 </script>
 
