@@ -2,20 +2,199 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>CSV 上傳系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV 數據連號分布系統</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        #output { margin-top: 20px; border-collapse: collapse; width: 100%; }
-        #output td, #output th { border: 1px solid #ddd; padding: 8px; }
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --bg-color: #f0f2f5;
+            --panel-bg: #ffffff;
+        }
+
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Panel 通用樣式 */
+        .panel {
+            background: var(--panel-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            padding: 25px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 1200px;
+            box-sizing: border-box;
+        }
+
+        .panel-title {
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            border-left: 5px solid var(--primary-color);
+            padding-left: 15px;
+        }
+
+        /* 上傳區優化 */
+        .upload-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        input[type="file"] {
+            padding: 10px;
+            border: 2px dashed #ccc;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        /* 表格樣式優化 */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            white-space: nowrap;
+            background-color: white;
+        }
+
+        th, td {
+            border: 1px solid #edf2f7;
+            text-align: center;
+            padding: 10px 5px;
+            font-size: 13px;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 500;
+            position: sticky;
+            top: 0;
+        }
+
+        /* 日期列寬度 */
+        td:first-child, th:first-child {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            min-width: 100px;
+        }
+
+        /* 命中數字樣式 */
+        .hit {
+            background-color: var(--accent-color);
+            color: white;
+            border-radius: 50%;
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            line-height: 24px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+        }
+
+        tr:hover {
+            background-color: #f1f4f8;
+        }
+
+        .empty-hint {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
     </style>
 </head>
 <body>
 
-    <h2>上傳並預覽 CSV 檔案</h2>
-    <input type="file" id="csvFile" accept=".csv">
-    <hr>
-    <table id="output"></table>
+    <div class="panel">
+        <h3 class="panel-title">數據上傳面板</h3>
+        <div class="upload-wrapper">
+            <input type="file" id="csvFile" accept=".csv">
+        </div>
+    </div>
 
-    <script src="script.js"></script>
+    <div class="panel">
+        <h3 class="panel-title">1-39 連號分布圖 (最新 10 期)</h3>
+        <div class="table-container">
+            <table id="distributionChart">
+                <thead><tr id="chartHeader"></tr></thead>
+                <tbody id="chartBody">
+                    <tr><td colspan="40" class="empty-hint">請上傳 CSV 檔案以產生報表</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const text = event.target.result;
+                processData(text);
+            };
+            reader.readAsText(file);
+        });
+
+        function processData(csvText) {
+            // 解析 CSV，過濾空行並移除標題列(若有)
+            const rows = csvText.split('\n')
+                .map(row => row.split(','))
+                .filter(row => row.length > 1 && row[0].trim() !== "");
+
+            // 邏輯優化：取最末端 10 筆，並反轉順序(最新在上)
+            const latestData = rows.slice(-10).reverse();
+
+            renderChart(latestData);
+        }
+
+        function renderChart(data) {
+            const header = document.getElementById('chartHeader');
+            const body = document.getElementById('chartBody');
+            
+            // 1. 生成標頭 (日期 + 1~39)
+            let headerHtml = '<th>日期</th>';
+            for (let i = 1; i <= 39; i++) {
+                headerHtml += `<th>${i}</th>`;
+            }
+            header.innerHTML = headerHtml;
+
+            // 2. 生成內容
+            body.innerHTML = '';
+            data.forEach(row => {
+                const date = row[0].trim();
+                // 取得該行除了日期以外的所有數字
+                const luckyNumbers = row.slice(1).map(n => n.trim());
+
+                let rowHtml = `<td>${date}</td>`;
+                for (let i = 1; i <= 39; i++) {
+                    const isHit = luckyNumbers.includes(i.toString());
+                    rowHtml += `<td>${isHit ? `<span class="hit">${i}</span>` : ''}</td>`;
+                }
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = rowHtml;
+                body.appendChild(tr);
+            });
+        }
+    </script>
 </body>
 </html>
