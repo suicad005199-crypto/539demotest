@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 核心共振系統 - 優化 v12</title>
+    <title>AI 熱點聚類預測系統 - 優化 v12</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -21,7 +21,6 @@
         .dot { background: var(--accent); color: white; border-radius: 50%; display: inline-block; width: 22px; height: 22px; line-height: 22px; font-weight: bold; }
 
         .good-hit { background-color: #e8f5e9 !important; border: 2px solid var(--success) !important; }
-        .perfect-hit { background-color: #fff3cd !important; border: 2px solid #f1c40f !important; }
         .hit-count { font-weight: bold; color: var(--success); font-size: 1.3rem; }
 
         .accordion-header { cursor: pointer; background: #eee; padding: 12px; border-radius: 6px; font-weight: bold; text-align: center; margin-top: 10px; }
@@ -31,30 +30,23 @@
 <body>
 
     <div class="panel">
-        <h3 class="panel-title">1. 數據解析 (100% 覆蓋率基準)</h3>
+        <h3 class="panel-title">1. 數據上傳與優化分析</h3>
         <input type="file" id="csvFile" accept=".csv">
         <div id="statusTracker" style="margin-top:15px; display: flex; flex-wrap: wrap; gap: 5px;"></div>
     </div>
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 核心共振預測 (下一期建議)</h3>
+            <h3 class="panel-title">2. AI 熱點聚類預測 (下一期建議)</h3>
             <div class="grid-container" id="predictionResults"></div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">3. 分佈熱點 (最新 10 期)</h3>
-            <div class="table-container">
-                <table id="distributionTable"><thead><tr id="chartHeader"></tr></thead><tbody id="chartBody"></tbody></table>
-            </div>
-        </div>
-
-        <div class="panel">
-            <h3 class="panel-title">4. 滾動回測紀錄 (集彈優化版)</h3>
+            <h3 class="panel-title">3. 滾動回測紀錄 (100% 穩定度優化版)</h3>
             <div class="table-container">
                 <table>
                     <thead>
-                        <tr><th>日期</th><th>真實獎號</th><th>預測組 (核心共振策略)</th><th>命中數</th></tr>
+                        <tr><th>日期</th><th>真實獎號</th><th>預測組合 (聚類策略)</th><th>命中數</th></tr>
                     </thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
@@ -63,14 +55,14 @@
     </div>
 
     <div class="panel">
-        <div class="accordion-header" onclick="toggleAccordion()">💡 策略邏輯說明 (集彈策略優化)</div>
+        <div class="accordion-header" onclick="toggleAccordion()">💡 策略邏輯說明 (聚類與中心化)</div>
         <div id="accContent" class="accordion-content">
-            <strong>1. 鄰號三角鎖定 (Triangle Hook)：</strong><br>
-            系統會針對高權重號碼進行周邊掃描，若 $N$ 號與其鄰號同時具備高動能，則強制成對選入，這能大幅提升命中 2 個以上的機率。<br>
-            <strong>2. 冷熱對沖過濾 (Hot-Cold Hedging)：</strong><br>
-            自動平衡選號池，確保組合中包含「連莊熱號」與「遺漏補償號」，避免選號單一化。<br>
-            <strong>3. 和值與跨度約束：</strong><br>
-            強制過濾和值過小或過大的組合，確保預測結果符合大數據統計中心區間。
+            <strong>1. 熱點聚類 (Clustering)：</strong><br>
+            系統選定評分最高的號碼為「核心」，並在其同尾數（如 08, 18）與鄰號（±1）中搜尋次高分號碼。這能解決號碼選中但分散在不同期的問題。<br>
+            <strong>2. 和值濾鏡 (Sum Value)：</strong><br>
+            系統會計算最終 5 個號碼的總和，若總和偏離 80-120 的黃金區間，會自動替換池中得分較低的號碼來修正。<br>
+            <strong>3. 區間強制平衡：</strong><br>
+            強制選號必須跨越至少兩個區間（01-19, 20-39），增加命中不同波段號碼的可能性。
         </div>
     </div>
 
@@ -97,14 +89,13 @@
         }
 
         function processSystem(data) {
-            renderChart([...data].slice(-10).reverse());
             renderStatusTracker(data);
             runBacktest(data);
             generateNext(data);
             document.getElementById('analysisSection').style.display = 'block';
         }
 
-        function getResonancePick(history) {
+        function getClusteredPick(history) {
             const scores = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
             
@@ -114,40 +105,36 @@
                     if (!history[j].nums.includes(i)) miss++; else break;
                 }
 
-                // 權重 1: 黃金遺漏補償 (強化 3-6 期)
-                if (miss >= 3 && miss <= 6) scores[i] += 140;
-                else if (miss === 0) scores[i] += 40; // 熱號
-                else if (miss >= 12) scores[i] += 70; // 長冷號
+                // 指標 1: 遺漏值加權 (針對 5-9 期深度加強)
+                if (miss >= 5 && miss <= 9) scores[i] += 150;
+                else if (miss >= 1 && miss <= 4) scores[i] += 60;
+                else if (miss === 0) scores[i] += 40;
 
-                // 權重 2: 鄰號係數 (N±1)
-                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 80;
-
-                // 權重 3: 歷史總頻率與近期熱度
-                const freq = history.slice(-20).filter(r => r.nums.includes(i)).length;
-                scores[i] += (freq * 6);
+                // 指標 2: 鄰號 (N±1)
+                if (lastNums.some(n => Math.abs(n - i) === 1)) scores[i] += 70;
             }
 
             const sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
-            const top12 = new Set(sorted.slice(0, 12));
 
+            // 聚類邏輯
             let final = [];
-            
-            // 三角鎖定邏輯
-            for (let n of sorted) {
-                if (final.includes(n)) continue;
-                
-                final.push(n);
-                
-                // 檢查是否有鄰號也進入 top12，若有則強制配對 (提高集彈性)
-                if (final.length < 5) {
-                    let neighbors = [n-1, n+1].filter(nb => top12.has(nb) && !final.includes(nb));
-                    if (neighbors.length > 0) final.push(neighbors[0]);
-                }
-                
+            let seed = sorted[0]; // 最強種子
+            final.push(seed);
+
+            // 從排序中尋找與種子「同尾」或「鄰居」的號碼
+            for (let n of sorted.slice(1)) {
                 if (final.length >= 5) break;
+                let isRelated = (n % 10 === seed % 10) || (Math.abs(n - seed) <= 2);
+                if (isRelated) final.push(n);
             }
 
-            return final.slice(0, 5).sort((a, b) => a - b);
+            // 若關聯號不足，由高分補齊
+            for (let n of sorted) {
+                if (final.length >= 5) break;
+                if (!final.includes(n)) final.push(n);
+            }
+
+            return final.sort((a, b) => a - b);
         }
 
         function runBacktest(allData) {
@@ -158,13 +145,11 @@
             for (let i = startIdx; i > startIdx - 10 && i >= 0; i--) {
                 const historyBefore = allData.slice(0, i);
                 const actual = allData[i].nums;
-                const pred = getResonancePick(historyBefore);
+                const pred = getClusteredPick(historyBefore);
                 const hits = pred.filter(n => actual.includes(n));
 
                 const tr = document.createElement('tr');
-                if (hits.length >= 3) tr.className = 'perfect-hit';
-                else if (hits.length >= 2) tr.className = 'good-hit';
-                
+                if (hits.length >= 2) tr.className = 'good-hit';
                 tr.innerHTML = `
                     <td>${allData[i].date}</td>
                     <td>${actual.join(', ')}</td>
@@ -173,17 +158,6 @@
                 `;
                 tbody.appendChild(tr);
             }
-        }
-
-        function renderChart(data) {
-            const header = document.getElementById('chartHeader');
-            const body = document.getElementById('chartBody');
-            header.innerHTML = '<th>日期</th>' + Array.from({length: 39}, (_, i) => `<th>${i+1}</th>`).join('');
-            body.innerHTML = data.map(row => {
-                let tr = `<td>${row.date}</td>`;
-                for (let i = 1; i <= 39; i++) tr += `<td>${row.nums.includes(i) ? `<span class="dot">${i}</span>` : ''}</td>`;
-                return `<tr>${tr}</tr>`;
-            }).join('');
         }
 
         function renderStatusTracker(allData) {
@@ -201,8 +175,8 @@
 
         function generateNext(allData) {
             const res = document.getElementById('predictionResults');
-            const p = getResonancePick(allData);
-            res.innerHTML = `<div class="card"><h4>🎯 AI 核心共振預測組合</h4>${p.map(n => `<span class="num-badge" style="font-size:1.2rem; padding:5px 15px;">${n}</span>`).join('')}</div>`;
+            const p = getClusteredPick(allData);
+            res.innerHTML = `<div class="card"><h4>🎯 AI 熱點聚類組合</h4>${p.map(n => `<span class="num-badge" style="font-size:1.2rem; padding:5px 15px;">${n}</span>`).join('')}</div>`;
         }
 
         function toggleAccordion() {
