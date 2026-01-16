@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CSV 號碼分析器</title>
+<title>CSV 號碼生成器</title>
 <style>
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
-    padding: 20px;
     background-color: #f9f9f9;
+    padding: 20px;
   }
   h1 {
     text-align: center;
     font-size: 24px;
+    margin-bottom: 20px;
   }
   input[type="file"] {
     display: block;
@@ -39,13 +40,55 @@
 </head>
 <body>
 
-<h1>CSV 號碼分析器</h1>
+<h1>CSV 號碼生成器</h1>
 <input type="file" id="csvFile" accept=".csv">
-<button id="analyzeBtn">分析 CSV</button>
+<button id="generateBtn">生成號碼組合</button>
 <div id="result"></div>
 
 <script>
-document.getElementById('analyzeBtn').addEventListener('click', () => {
+// 解析 CSV，取得每列號碼
+function parseCSV(text) {
+  const rows = text.trim().split(/\r?\n/);
+  const data = [];
+  rows.slice(1).forEach(row => {
+    const cols = row.split(',');
+    const nums = cols.slice(1).map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+    data.push(nums);
+  });
+  return data;
+}
+
+// 根據區間 + 出現次數生成號碼組合
+function getNextNumbers(data) {
+  const ranges = [
+    [1,10],
+    [11,20],
+    [21,30],
+    [31,40],
+    [41,50]
+  ];
+
+  // 統計每個號碼出現次數
+  const freq = {};
+  data.flat().forEach(n => freq[n] = (freq[n] || 0) + 1);
+
+  const nextNumbers = [];
+
+  ranges.forEach(range => {
+    const [min, max] = range;
+    const candidates = [];
+    for (let i=min; i<=max; i++) {
+      candidates.push({num:i, count: freq[i]||0});
+    }
+    // 選出出現次數最少的號碼（未出現優先）
+    candidates.sort((a,b) => a.count - b.count);
+    nextNumbers.push(candidates[0].num);
+  });
+
+  return nextNumbers;
+}
+
+document.getElementById('generateBtn').addEventListener('click', () => {
   const fileInput = document.getElementById('csvFile');
   const file = fileInput.files[0];
   const resultDiv = document.getElementById('result');
@@ -58,36 +101,10 @@ document.getElementById('analyzeBtn').addEventListener('click', () => {
   const reader = new FileReader();
   reader.onload = function(e) {
     const text = e.target.result;
-    const rows = text.trim().split(/\r?\n/);
-    let numbers = [];
-
-    // 將 CSV 內容拆成數字
-    rows.forEach(row => {
-      const cols = row.split(/,|;/); // 支援逗號或分號分隔
-      cols.forEach(col => {
-        const num = parseInt(col.trim());
-        if (!isNaN(num)) {
-          numbers.push(num);
-        }
-      });
-    });
-
-    // 計算每個號碼出現次數
-    const freqMap = {};
-    numbers.forEach(n => {
-      freqMap[n] = (freqMap[n] || 0) + 1;
-    });
-
-    // 找出出現頻率最高的前 5 個號碼
-    const topNumbers = Object.keys(freqMap)
-      .map(k => ({num: parseInt(k), count: freqMap[k]}))
-      .sort((a,b) => b.count - a.count)
-      .slice(0,5)
-      .map(o => o.num);
-
-    resultDiv.innerHTML = '前五高頻率號碼：<strong>' + topNumbers.join(', ') + '</strong>';
+    const data = parseCSV(text);
+    const nextNumbers = getNextNumbers(data);
+    resultDiv.innerHTML = '生成號碼組合：<strong>' + nextNumbers.join(', ') + '</strong>';
   };
-
   reader.readAsText(file);
 });
 </script>
