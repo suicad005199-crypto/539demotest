@@ -3,52 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>539 數據分析產生器</title>
+    <title>539 數據分析系統</title>
     <style>
-        :root { --primary: #d32f2f; --bg: #f4f4f9; --dark: #333; }
+        :root { --primary: #d32f2f; --bg: #f4f4f9; --table-border: #ddd; }
         body { font-family: sans-serif; margin: 0; background: var(--bg); }
         
-        /* 置頂面板 */
-        .top-panel { background: var(--dark); color: white; padding: 15px; display: flex; justify-content: center; align-items: center; gap: 15px; position: sticky; top: 0; z-index: 100; }
+        /* 置頂 Panel */
+        .top-panel { background: #333; color: white; padding: 15px; display: flex; justify-content: center; align-items: center; gap: 15px; position: sticky; top: 0; z-index: 100; }
         
-        /* 連號分布面板 */
-        .analysis-panel { background: #fff; border-bottom: 2px solid #ddd; padding: 15px; max-height: 200px; overflow-y: auto; }
-        .chart-title { font-size: 0.9rem; font-weight: bold; margin-bottom: 10px; color: #555; text-align: center; }
-        .chart-container { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
-        .bar-item { display: flex; flex-direction: column; align-items: center; width: 30px; }
-        .bar { width: 15px; background: #4caf50; min-height: 2px; transition: height 0.3s; }
-        .label { font-size: 10px; margin-top: 4px; transform: rotate(-45deg); }
+        /* 分布圖 Panel */
+        .chart-panel { background: white; border-bottom: 2px solid var(--table-border); max-height: 400px; overflow: auto; padding: 10px; }
+        table { border-collapse: collapse; width: 100%; min-width: 1000px; font-size: 12px; }
+        th, td { border: 1px solid var(--table-border); text-align: center; padding: 4px; width: 22px; }
+        th { background: #eee; position: sticky; top: 0; }
+        .date-col { width: 80px; background: #f9f9f9; font-weight: bold; position: sticky; left: 0; z-index: 10; }
+        .hit { background: var(--primary); color: white; border-radius: 50%; display: inline-block; width: 18px; height: 18px; line-height: 18px; font-weight: bold; }
 
-        /* 主內容區 */
-        .main { margin: 20px auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
-        button { padding: 10px 25px; font-size: 1rem; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: bold; }
-        .result { margin-top: 25px; display: flex; gap: 10px; justify-content: center; }
+        /* 主產生器區 */
+        .main { padding: 2rem; text-align: center; }
+        .ball-result { margin-top: 20px; display: flex; gap: 10px; justify-content: center; }
         .ball { width: 40px; height: 40px; line-height: 40px; background: #ffc107; border-radius: 50%; font-weight: bold; border: 2px solid #ffa000; }
+        button { padding: 10px 25px; cursor: pointer; background: var(--primary); color: white; border: none; border-radius: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="top-panel">
-    <span>數據上傳 (CSV):</span>
+    <span>歷史 CSV 上傳:</span>
     <input type="file" id="csvFile" accept=".csv" onchange="handleFile()">
-    <small id="file-info">未選取</small>
+    <span id="file-status">請上傳資料</span>
 </div>
 
-<div class="analysis-panel" id="analysisPanel">
-    <div class="chart-title">連號分佈統計 (CSV 數據分析)</div>
-    <div class="chart-container" id="chartContainer">
-        <p style="color: #999; font-size: 0.8rem;">請先上傳 CSV 檔案以分析數據</p>
-    </div>
+<div class="chart-panel" id="chartPanel">
+    <p style="text-align: center; color: #888;">上傳資料後將在此顯示連號分布圖</p>
 </div>
 
 <div class="main">
-    <button onclick="generateNumbers()">產生隨機號碼</button>
-    <div class="result" id="result"></div>
+    <button onclick="generateNumbers()">隨機產生一組號碼</button>
+    <div class="ball-result" id="result"></div>
 </div>
 
 <script>
-    let csvData = [];
-
     function handleFile() {
         const file = document.getElementById('csvFile').files[0];
         if (!file) return;
@@ -56,49 +51,49 @@
         const reader = new FileReader();
         reader.onload = function(e) {
             const rows = e.target.result.split('\n').filter(row => row.trim() !== '');
-            // 轉換為數字陣列：假設 CSV 每列最後 5 欄是中獎號碼
-            csvData = rows.map(row => row.split(',').slice(-5).map(Number).sort((a,b)=>a-b));
-            document.getElementById('file-info').innerText = `已讀取 ${csvData.length} 筆`;
-            analyzeConsecutive();
+            renderChart(rows);
+            document.getElementById('file-status').innerText = `載入 ${rows.length} 筆`;
         };
         reader.readAsText(file);
     }
 
-    function analyzeConsecutive() {
-        const freq = {};
-        csvData.forEach(nums => {
-            for (let i = 0; i < nums.length - 1; i++) {
-                if (nums[i+1] - nums[i] === 1) { // 判斷是否連號
-                    const key = `${nums[i]}-${nums[i+1]}`;
-                    freq[key] = (freq[key] || 0) + 1;
-                }
+    function renderChart(rows) {
+        let html = '<table><thead><tr><th class="date-col">日期</th>';
+        for (let i = 1; i <= 39; i++) html += `<th>${i}</th>`;
+        html += '</tr></thead><tbody>';
+
+        rows.forEach(row => {
+            const cols = row.split(',');
+            const date = cols[0]; // 第一欄日期
+            const winningNums = cols.slice(1).map(n => parseInt(n.trim())); // 後續欄位為號碼
+
+            html += `<tr><td class="date-col">${date}</td>`;
+            for (let i = 1; i <= 39; i++) {
+                const isHit = winningNums.includes(i);
+                html += `<td>${isHit ? `<span class="hit">${i}</span>` : ''}</td>`;
             }
+            html += '</tr>';
         });
 
-        const container = document.getElementById('chartContainer');
-        container.innerHTML = '';
-        
-        Object.entries(freq).sort((a,b) => b[1] - a[1]).slice(0, 15).forEach(([pair, count]) => {
-            const item = document.createElement('div');
-            item.className = 'bar-item';
-            item.innerHTML = `
-                <div class="bar" style="height: ${count * 5}px" title="次數: ${count}"></div>
-                <div class="label">${pair}</div>
-            `;
-            container.appendChild(item);
-        });
+        html += '</tbody></table>';
+        document.getElementById('chartPanel').innerHTML = html;
     }
 
     function generateNumbers() {
-        const numbers = [];
-        while(numbers.length < 5) {
+        const nums = [];
+        while(nums.length < 5) {
             const r = Math.floor(Math.random() * 39) + 1;
-            if(!numbers.includes(r)) numbers.push(r);
+            if(!nums.includes(r)) nums.push(r);
         }
-        numbers.sort((a, b) => a - b);
-        
+        nums.sort((a, b) => a - b);
         const resDiv = document.getElementById('result');
-        resDiv.innerHTML = numbers.map(n => `<div class="ball">${n < 10 ? '0'+n : n}</div>`).join('');
+        resDiv.innerHTML = '';
+        nums.forEach(n => {
+            const b = document.createElement('div');
+            b.className = 'ball';
+            b.innerText = n < 10 ? '0'+n : n;
+            resDiv.appendChild(b);
+        });
     }
 </script>
 
