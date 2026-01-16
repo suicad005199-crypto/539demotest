@@ -2,34 +2,34 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 雙蜂巢系統 - 優化 v76</title>
+    <title>AI 三元坍塌系統 - 優化 v77</title>
     <style>
         :root { --p: #2c3e50; --a: #e74c3c; --s: #27ae60; --b: #f4f7f6; }
         body { font-family: sans-serif; background: var(--b); padding: 20px; }
         .panel { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .num-badge { display: inline-block; background: var(--p); color: white; border-radius: 4px; padding: 4px 12px; margin: 2px; font-weight: bold; }
-        .hit-badge { background: var(--s) !important; }
+        .hit-badge { background: var(--s) !important; box-shadow: 0 0 8px var(--s); }
         table { width: 100%; border-collapse: collapse; background: white; }
         th, td { border: 1px solid #eee; padding: 10px; text-align: center; }
         th { background: var(--p); color: white; }
-        .best-hit { background-color: #fff9c4 !important; border: 2px solid #f1c40f !important; }
-        .hit-count { font-weight: bold; color: var(--s); font-size: 1.2rem; }
+        .best-hit { background-color: #fff176 !important; border: 2px solid #fbc02d !important; font-weight: bold; }
+        .hit-count { font-weight: bold; color: var(--s); font-size: 1.3rem; }
     </style>
 </head>
 <body>
 
     <div class="panel">
-        <h3>1. 數據解析 (v76 雙蜂巢版)</h3>
+        <h3>1. 數據解析 (v77 三元坍塌版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="resSection" style="display:none;">
         <div class="panel">
-            <h3>2. AI 預測組合 (下一期建議)</h3>
+            <h3>2. AI 坍塌預測 (目標：40% 命中 3)</h3>
             <div id="predResult"></div>
         </div>
         <div class="panel">
-            <h3>3. 滾動回測 (目標：40% 命中 3)</h3>
+            <h3>3. 滾動回測 (集彈力檢驗)</h3>
             <table>
                 <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合</th><th>命中</th></tr></thead>
                 <tbody id="btBody"></tbody>
@@ -51,18 +51,18 @@
             tbody.innerHTML = '';
             
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getPick(data.slice(0, i));
+                const pred = getTriadicPick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            document.getElementById('predResult').innerHTML = getPick(data).map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
+            document.getElementById('predResult').innerHTML = getTriadicPick(data).map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
             document.getElementById('resSection').style.display = 'block';
         }
 
-        function getPick(hist) {
+        function getTriadicPick(hist) {
             let sc = Array(40).fill(0), ms = Array(40).fill(0);
             const last = hist[hist.length-1].nums, recent = hist.slice(-5).flatMap(h=>h.nums);
             let tf = Array(10).fill(0); recent.forEach(n=>tf[n%10]++);
@@ -70,27 +70,32 @@
             for (let i=1; i<=39; i++) {
                 let m = 0; for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) m++; else break; }
                 ms[i] = m;
-                if(m===1) sc[i]+=1400; else if(m>=5 && m<=9) sc[i]+=1100; else if(m===0) sc[i]+=500; else if(m>=12) sc[i]=0; else sc[i]+=100;
-                sc[i] += tf[i%10]*80;
-                if(last.some(ln=>Math.abs(ln-i)===1)) sc[i]+=350;
+                // v77 高壓加權
+                if(m===1) sc[i]+=1500; else if(m>=5 && m<=9) sc[i]+=1100; else if(m===0) sc[i]+=600; else if(m>=12) sc[i]=0; else sc[i]+=100;
+                sc[i] += tf[i%10]*120; // 極限強化尾數
+                if(last.some(ln=>Math.abs(ln-i)===1)) sc[i]+=400; // 強化鄰號
             }
 
             let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
             let res = [];
 
-            // 蜂巢 A (熱連組)
-            let hA = sorted.find(n => ms[n] <= 1); res.push(hA);
-            let mA = sorted.find(n => !res.includes(n) && Math.abs(n-hA)===1); if(mA) res.push(mA);
+            // 組 A：三元集彈網 (核心 + 鄰號 + 同尾)
+            let core = sorted[0]; res.push(core);
+            let neighbor = sorted.find(n => !res.includes(n) && Math.abs(n-core)===1);
+            if(neighbor) res.push(neighbor);
+            let tail = sorted.find(n => !res.includes(n) && n%10===core%10);
+            if(tail) res.push(tail);
 
-            // 蜂巢 B (反彈對)
-            let hB = sorted.find(n => !res.includes(n) && ms[n]>=5 && ms[n]<=9);
-            if(hB) {
-                res.push(hB);
-                let mB = sorted.find(n => !res.includes(n) && n%10===hB%10); if(mB) res.push(mB);
+            // 組 B：跨區反彈對 (確保覆蓋)
+            let bounce = sorted.find(n => !res.includes(n) && Math.abs(Math.floor(n/10) - Math.floor(core/10)) >= 1 && ms[n]>=5);
+            if(bounce) {
+                res.push(bounce);
+                // 強迫第五顆鎖定在 bounce 的區域或 tail 關係中
+                let link = sorted.find(n => !res.includes(n) && (n%10===bounce%10 || Math.abs(n-bounce)===1));
+                if(link) res.push(link);
             }
 
-            // 哨兵位 (補強覆蓋)
-            for(let n of sorted) { if(res.length<5 && !res.includes(n)) res.push(n); }
+            while (res.length < 5) res.push(sorted.find(n => !res.includes(n)));
             return res.sort((a,b)=>a-b);
         }
     </script>
