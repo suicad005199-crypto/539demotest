@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 共振鏈修復系統 - 優化 v63</title>
+    <title>AI 雙軌分層濾鏡系統 - 優化 v64</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -22,21 +22,21 @@
 <body>
 
     <div class="panel">
-        <h3 class="panel-title">1. 數據解析 (v63 共振鏈版)</h3>
+        <h3 class="panel-title">1. 數據解析 (v64 雙軌分層版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 共振預測 (下一期建議)</h3>
+            <h3 class="panel-title">2. AI 預測組合 (下一期建議)</h3>
             <div id="predictionResults"></div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">3. 滾動回測 (重啟集彈力)</h3>
+            <h3 class="panel-title">3. 滾動回測紀錄 (目標：找回 60% 命中率)</h3>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v63)</th><th>命中</th></tr></thead>
+                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v64)</th><th>命中</th></tr></thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
             </div>
@@ -62,14 +62,14 @@
             if (data.length > 0) processSystem(data);
         }
 
-        function getResonanceChainPick(history) {
+        function getLayeredPick(history) {
             let scores = Array(40).fill(0);
             let missArr = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
-            const recentNums = history.slice(-5).flatMap(h => h.nums);
+            const recentHistory = history.slice(-10).flatMap(h => h.nums);
             
             let tailFreq = Array(10).fill(0);
-            recentNums.forEach(n => tailFreq[n % 10]++);
+            recentHistory.forEach(n => tailFreq[n % 10]++);
 
             for (let i = 1; i <= 39; i++) {
                 let m = 0;
@@ -78,44 +78,42 @@
                 }
                 missArr[i] = m;
 
-                // 核心權重 (參考 v46/48)
-                if (m === 1) scores[i] += 600;       
-                else if (m === 0) scores[i] += 400;  
-                else if (m >= 5 && m <= 9) scores[i] += 500; 
-                else if (m >= 13) scores[i] = 0;
-                else scores[i] += 100;
+                // 遺漏層級權重 (v48 強化)
+                if (m === 1) scores[i] += 550;       
+                else if (m >= 5 && m <= 9) scores[i] += 520; 
+                else if (m === 0) scores[i] += 280;  
+                else if (m >= 13) scores[i] = 0;     
+                else scores[i] += 80; // 壓低溫水區
 
-                // 尾數與連號加權
-                scores[i] += tailFreq[i % 10] * 35;
-                if (lastNums.some(ln => Math.abs(ln - i) === 1)) scores[i] += 200;
+                // 鄰號傳導
+                if (lastNums.some(ln => Math.abs(ln - i) === 1)) scores[i] += 160;
+                // 尾數慣性
+                scores[i] += tailFreq[i % 10] * 25;
             }
 
             let sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
             let final = [];
 
-            // 1. 三位一體核心組網
-            let core = sorted[0];
-            final.push(core);
+            // 1. 選取軌道 A (熱區斜連)
+            let trackA = sorted.filter(n => missArr[n] <= 1).slice(0, 2);
+            trackA.forEach(n => final.push(n));
 
-            // 找最強同尾
-            let bestTail = sorted.find(n => !final.includes(n) && (n % 10 === core % 10));
-            if (bestTail) final.push(bestTail);
+            // 2. 選取軌道 B (反彈金區)
+            let trackB = sorted.filter(n => !final.includes(n) && missArr[n] >= 5 && missArr[n] <= 9).slice(0, 2);
+            trackB.forEach(n => final.push(n));
 
-            // 找最強鄰號
-            let bestNeighbor = sorted.find(n => !final.includes(n) && Math.abs(n - core) === 1);
-            if (bestNeighbor) final.push(bestNeighbor);
+            // 3. 選取軌道 C (共振與跨度校準)
+            let resonanceNode = sorted.find(n => {
+                if (final.includes(n)) return false;
+                // 檢查同尾或連號聯繫
+                let links = final.filter(f => (f % 10 === n % 10) || (Math.abs(f - n) === 1)).length;
+                // 檢查是否拉開區間跨度
+                let dist = Math.min(...final.map(f => Math.abs(f - n)));
+                return links >= 1 && dist >= 2;
+            });
 
-            // 2. 跨度與遺漏補位 (補足 L5-9)
-            let backNodes = sorted.filter(n => !final.includes(n) && missArr[n] >= 5 && missArr[n] <= 9);
-            for(let i=0; i < backNodes.length && final.length < 5; i++) {
-                final.push(backNodes[i]);
-            }
-
-            // 3. 最終保底
-            for (let n of sorted) {
-                if (final.length >= 5) break;
-                if (!final.includes(n)) final.push(n);
-            }
+            if (resonanceNode) final.push(resonanceNode);
+            else final.push(sorted.find(n => !final.includes(n)));
 
             return final.sort((a, b) => a - b);
         }
@@ -124,7 +122,7 @@
             const tbody = document.getElementById('backtestBody');
             tbody.innerHTML = '';
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getResonanceChainPick(data.slice(0, i));
+                const pred = getLayeredPick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
@@ -132,7 +130,7 @@
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            const nextP = getResonanceChainPick(data);
+            const nextP = getLayeredPick(data);
             document.getElementById('predictionResults').innerHTML = nextP.map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
             document.getElementById('analysisSection').style.display = 'block';
         }
