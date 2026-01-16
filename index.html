@@ -1,69 +1,96 @@
-function generateOptimizedPrediction() {
-  if (data.length === 0) {
-    alert("請先載入歷史資料 CSV");
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSV 號碼分析器</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    padding: 20px;
+    background-color: #f9f9f9;
+  }
+  h1 {
+    text-align: center;
+    font-size: 24px;
+  }
+  input[type="file"] {
+    display: block;
+    margin: 20px auto;
+    font-size: 18px;
+  }
+  button {
+    display: block;
+    margin: 20px auto;
+    padding: 15px 30px;
+    font-size: 18px;
+    border: none;
+    background-color: #007AFF;
+    color: white;
+    border-radius: 12px;
+  }
+  #result {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 20px;
+    word-break: break-word;
+  }
+</style>
+</head>
+<body>
+
+<h1>CSV 號碼分析器</h1>
+<input type="file" id="csvFile" accept=".csv">
+<button id="analyzeBtn">分析 CSV</button>
+<div id="result"></div>
+
+<script>
+document.getElementById('analyzeBtn').addEventListener('click', () => {
+  const fileInput = document.getElementById('csvFile');
+  const file = fileInput.files[0];
+  const resultDiv = document.getElementById('result');
+
+  if (!file) {
+    alert('請先選擇 CSV 檔案');
     return;
   }
 
-  const totalDraws = data.length;
-  const freq = {}, lastOccur = {};
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const rows = text.trim().split(/\r?\n/);
+    let numbers = [];
 
-  // 計算每個號碼出現頻率與最後出現期數
-  data.forEach((draw, idx) => {
-    draw.forEach(n => {
-      freq[n] = (freq[n] || 0) + 1;
-      lastOccur[n] = idx;
+    // 將 CSV 內容拆成數字
+    rows.forEach(row => {
+      const cols = row.split(/,|;/); // 支援逗號或分號分隔
+      cols.forEach(col => {
+        const num = parseInt(col.trim());
+        if (!isNaN(num)) {
+          numbers.push(num);
+        }
+      });
     });
-  });
 
-  // 計算每個號碼的綜合分數
-  const scores = [];
-  for (let n = 1; n <= 39; n++) {
-    const f = (freq[n] || 0) / totalDraws;
-    const m = totalDraws - (lastOccur[n] || 0);
-    let score = 0;
-    if (f < 0.08) score += 25;   // 冷號補分
-    if (f > 0.12) score += 5;    // 熱號加分
-    score += m * 0.5;            // 遺漏期數加分
-    if (n % 2 === 0) score += 1; // 偏奇偶加分
-    scores.push({ n, score });
-  }
-
-  let bestCombo = [];
-  let highestHitRate = -1;
-
-  // 模擬多組候選組合
-  for (let iter = 0; iter < 10000; iter++) {
-    const pool = scores.sort((a, b) => b.score - a.score).slice(0, 15);
-    const selected = [];
-    while (selected.length < 5) {
-      const pick = pool[Math.floor(Math.random() * pool.length)].n;
-      if (!selected.includes(pick)) selected.push(pick);
-    }
-    selected.sort((a, b) => a - b);
-
-    // 計算模擬 ≥3 顆命中率
-    let hit3 = 0;
-    data.forEach(draw => {
-      const match = draw.filter(n => selected.includes(n)).length;
-      if (match >= 3) hit3++;
+    // 計算每個號碼出現次數
+    const freqMap = {};
+    numbers.forEach(n => {
+      freqMap[n] = (freqMap[n] || 0) + 1;
     });
-    const hitRate = (hit3 / totalDraws) * 100;
 
-    if (hitRate > highestHitRate) {
-      highestHitRate = hitRate;
-      bestCombo = selected;
-    }
-  }
+    // 找出出現頻率最高的前 5 個號碼
+    const topNumbers = Object.keys(freqMap)
+      .map(k => ({num: parseInt(k), count: freqMap[k]}))
+      .sort((a,b) => b.count - a.count)
+      .slice(0,5)
+      .map(o => o.num);
 
-  // 顯示結果（只顯示 ≥3 顆命中率最高的組合）
-  const resultDiv = document.getElementById("panelC");
-  resultDiv.style.display = "block";
-  resultDiv.innerHTML = `
-    <div class="numbers-grid">
-      ${bestCombo.map(n => `<div class="number-ball hot">${n}</div>`).join('')}
-    </div>
-    <div class="status success">
-      <p>模擬歷史回測 ≥3 顆命中率：${highestHitRate.toFixed(1)}%</p>
-    </div>
-  `;
-}
+    resultDiv.innerHTML = '前五高頻率號碼：<strong>' + topNumbers.join(', ') + '</strong>';
+  };
+
+  reader.readAsText(file);
+});
+</script>
+
+</body>
+</html>
