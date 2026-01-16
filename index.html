@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 三維熵值錨點系統 - 優化 v57</title>
+    <title>AI 三維連動系統 - 優化 v58</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -22,21 +22,21 @@
 <body>
 
     <div class="panel">
-        <h3 class="panel-title">1. 數據解析 (v57 熵值錨點版)</h3>
+        <h3 class="panel-title">1. 數據解析 (v58 連動補償版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 熵值預測 (下一期建議)</h3>
+            <h3 class="panel-title">2. AI 連動預測 (下一期建議)</h3>
             <div id="predictionResults"></div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">3. 滾動回測 (衝刺命中 3 號)</h3>
+            <h3 class="panel-title">3. 滾動回測 (目標：擊穿 3 星斷層)</h3>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v57)</th><th>命中</th></tr></thead>
+                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v58)</th><th>命中</th></tr></thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
             </div>
@@ -62,13 +62,12 @@
             if (data.length > 0) processSystem(data);
         }
 
-        function getEntropyAnchorPick(history) {
+        function getTripleLinkagePick(history) {
             let scores = Array(40).fill(0);
             let missArr = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
             const recentNums = history.slice(-5).flatMap(h => h.nums);
             
-            // 尾數熱圖計算
             let tailFreq = Array(10).fill(0);
             recentNums.forEach(n => tailFreq[n % 10]++);
 
@@ -79,39 +78,39 @@
                 }
                 missArr[i] = m;
 
-                // 核心熵值評分 (優化版 v48)
-                if (m === 1) scores[i] += 580;       // 斜連動能
-                else if (m >= 5 && m <= 9) scores[i] += 460; // 黃金反彈
-                else if (m === 0) scores[i] += 300;  // 連莊
+                // 核心分層評分
+                if (m === 1) scores[i] += 600;       // 強斜連
+                else if (m >= 5 && m <= 9) scores[i] += 480; // 黃金反彈
+                else if (m === 0) scores[i] += 320;  // 連莊
+                else if (m >= 2 && m <= 4) scores[i] += 50;  // 溫水過濾
                 else if (m >= 13) scores[i] = 0;
-                else scores[i] += 120;
-
-                // 鄰號與尾數共振
-                if (lastNums.some(ln => Math.abs(ln - i) === 1)) scores[i] += 180;
-                scores[i] += tailFreq[i % 10] * 30;
             }
 
             let sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
             let final = [];
 
-            // 1. 決定第一主錨點 (全域最高分)
-            final.push(sorted[0]);
+            // 1. 選取主核心 (Seed 1)
+            let seed1 = sorted[0];
+            final.push(seed1);
 
-            // 2. 決定第二錨點 (異區塊反彈號)
-            let anchor2 = sorted.find(n => !final.includes(n) && Math.abs(Math.floor(n/10) - Math.floor(final[0]/10)) >= 1 && missArr[n] >= 5);
-            if (anchor2) final.push(anchor2);
+            // 2. 選取連動核心 (與 Seed 1 同尾或鄰號的高分球)
+            let seed2 = sorted.find(n => !final.includes(n) && (n % 10 === seed1 % 10 || Math.abs(n - seed1) === 1));
+            if (seed2) final.push(seed2);
 
-            // 3. 垂直共振填充 (尋找與錨點同尾且分高者)
-            let tailEcho = sorted.find(n => !final.includes(n) && final.some(f => f % 10 === n % 10) && scores[n] > 200);
-            if (tailEcho) final.push(tailEcho);
-
-            // 4. 連鎖填充 (尋找連號機會)
+            // 3. 補償選號 (確保異區塊且具備反彈潛力)
             for (let n of sorted) {
                 if (final.length >= 5) break;
                 if (final.includes(n)) continue;
 
-                let relation = final.some(f => Math.abs(f - n) === 1 || f % 10 === n % 10);
-                if (relation || final.length >= 4) {
+                let zoneDiff = final.every(f => Math.abs(Math.floor(f/10) - Math.floor(n/10)) >= 0);
+                let tailMatch = final.some(f => f % 10 === n % 10);
+                let neighborMatch = final.some(f => Math.abs(f - n) === 1);
+
+                // 強化命中3的集彈性：同尾或鄰號優先，但限制同一區間不過多
+                let zoneCount = final.filter(f => Math.floor(f/10) === Math.floor(n/10)).length;
+                if ((tailMatch || neighborMatch) && zoneCount < 2) {
+                    final.push(n);
+                } else if (final.length >= 4) {
                     final.push(n);
                 }
             }
@@ -123,7 +122,7 @@
             const tbody = document.getElementById('backtestBody');
             tbody.innerHTML = '';
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getEntropyAnchorPick(data.slice(0, i));
+                const pred = getTripleLinkagePick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
@@ -131,7 +130,7 @@
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            const nextP = getEntropyAnchorPick(data);
+            const nextP = getTripleLinkagePick(data);
             document.getElementById('predictionResults').innerHTML = nextP.map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
             document.getElementById('analysisSection').style.display = 'block';
         }
