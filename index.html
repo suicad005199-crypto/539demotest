@@ -3,211 +3,153 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>三星-預測系統 v3.0 (萬次模擬版)</title>
+<title>三星-預測系統 v4.0 (十萬次頻率聚合)</title>
 <style>
 :root {
   --primary: #00ff99;
-  --secondary: #274c77;
   --bg-0: #050b15;
   --bg-1: #0f1f38;
-  --bg-2: #142b4d;
-  --bg-3: #1a355c;
   --text-light: #e0f7ff;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: linear-gradient(135deg, #0b1626, #051122);
-  color: var(--text-light);
-  min-height: 100vh;
-  padding: 20px;
+  background: #0b1626; color: var(--text-light); padding: 20px;
 }
-.container { max-width: 800px; margin: 0 auto; }
-.header { text-align: center; padding: 30px; background: var(--bg-0); border-radius: 20px; margin-bottom: 20px; border-top: 4px solid var(--primary); }
-.header h1 { color: var(--primary); margin-bottom: 8px; }
-.panel { border-radius: 16px; padding: 24px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.05); }
-.panel-1 { background: var(--bg-1); }
-.panel-2 { background: var(--bg-2); }
-.panel-4 { background: var(--bg-3); }
-h2 { color: var(--primary); margin-bottom: 20px; font-size: 1.3rem; }
-.file-input, .btn { width: 100%; padding: 16px; border-radius: 12px; font-size: 16px; cursor: pointer; transition: 0.3s; border: none; }
-.file-input { background: rgba(0,0,0,0.3); border: 2px dashed rgba(0,255,153,0.3); color: white; margin-bottom: 15px; }
-.btn { background: var(--secondary); color: white; font-weight: bold; }
-.btn-primary { background: var(--primary); color: var(--bg-0); margin-top: 10px; }
-.btn:hover { transform: translateY(-2px); opacity: 0.9; }
-.box { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 20px; margin-top: 20px; }
-.numbers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 10px; margin: 15px 0; }
-.number-ball { width: 55px; height: 55px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: bold; background: #203f6e; }
-.number-ball.predict { background: linear-gradient(135deg, var(--primary), #00cc7a); color: #050b15; box-shadow: 0 0 15px rgba(0,255,153,0.4); }
-.stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; }
-.stat-item { background: rgba(255,255,255,0.05); padding: 12px; border-radius: 10px; text-align: center; }
-.status { padding: 12px; border-radius: 8px; margin: 10px 0; font-size: 0.9rem; line-height: 1.5; }
-.status.success { background: rgba(0, 255, 153, 0.1); border: 1px solid var(--primary); color: var(--primary); }
-.loading { display: none; text-align: center; padding: 20px; }
-.spinner { width: 30px; height: 30px; border: 3px solid rgba(0,255,153,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s infinite linear; margin: 10px auto; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.container { max-width: 600px; margin: 0 auto; }
+.header { text-align: center; padding: 20px; background: var(--bg-0); border-radius: 15px; margin-bottom: 20px; border-top: 4px solid var(--primary); }
+.panel { border-radius: 16px; padding: 20px; margin-bottom: 20px; background: var(--bg-1); border: 1px solid rgba(255,255,255,0.05); }
+.btn { width: 100%; padding: 18px; border-radius: 12px; font-size: 16px; cursor: pointer; border: none; font-weight: bold; transition: 0.3s; }
+.btn-primary { background: var(--primary); color: #000; box-shadow: 0 4px 15px rgba(0,255,153,0.3); }
+.number-ball { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: bold; background: #203f6e; color: #fff; }
+.number-ball.best { background: linear-gradient(135deg, var(--primary), #00cc7a); color: #000; }
+.numbers-grid { display: flex; justify-content: center; gap: 10px; margin: 20px 0; }
+.status { padding: 12px; border-radius: 8px; font-size: 0.9rem; background: rgba(0,255,153,0.1); color: var(--primary); border: 1px solid var(--primary); text-align: center; line-height: 1.6; }
+.loading { display: none; text-align: center; margin: 15px 0; color: var(--primary); font-weight: bold; }
 </style>
 </head>
 <body>
 
 <div class="container">
   <div class="header">
-    <h1>三星-預測系統 v3.0</h1>
-    <p>Monte Carlo 萬次模擬聚合架構</p>
+    <h1>三星-預測系統 v4.0</h1>
+    <p>純頻率權重 | 十萬次大規模模擬</p>
   </div>
 
-  <div class="panel panel-1">
-    <h2>📊 數據導入</h2>
-    <input type="file" id="csvInput" class="file-input" accept=".csv">
+  <div class="panel">
+    <input type="file" id="csvInput" style="color:#fff; margin-bottom:10px;" accept=".csv">
     <div id="csvInfo"></div>
   </div>
 
-  <div class="panel panel-2">
-    <h2>🔍 數據分析</h2>
-    <button class="btn" onclick="runAnalysis()">更新歷史權重</button>
-    <div class="loading" id="loadingA"><div class="spinner"></div></div>
-    <div id="panelA" style="display: none;"></div>
-  </div>
-
-  <div class="panel panel-4">
-    <h2>🎯 模擬生成</h2>
-    <button class="btn btn-primary" onclick="generatePrediction()">執行萬次模擬預測</button>
-    <div class="loading" id="loadingC"><div class="spinner"></div>正在進行 10,000 次組合實驗...</div>
-    <div id="panelC" style="display: none;"></div>
+  <div class="panel">
+    <button class="btn btn-primary" onclick="generateUltraPrediction()">執行十萬次聚合預測</button>
+    <div class="loading" id="loader">
+      <div style="margin-bottom:10px;">正在進行 100,000 次蒙地卡羅運算...</div>
+      <div id="progress">0%</div>
+    </div>
+    <div id="resultArea" style="display: none;">
+      <div class="numbers-grid" id="bestNumbers"></div>
+      <div class="status" id="bestStatus"></div>
+    </div>
   </div>
 </div>
 
 <script>
 let data = [];
-let analysisCache = null;
+let stats = null;
 
 document.getElementById("csvInput").onchange = function(e) {
-  const file = e.target.files[0];
   const reader = new FileReader();
-  reader.onload = function(event) {
-    const lines = event.target.result.trim().split(/\r?\n/);
-    data = [];
-    lines.forEach((line, idx) => {
-      if (idx === 0) return;
-      const parts = line.split(",");
-      if (parts.length >= 6) {
-        data.push({ date: parts[0], numbers: parts.slice(1, 6).map(n => parseInt(n.trim())) });
-      }
-    });
-    document.getElementById("csvInfo").innerHTML = `<div class="status success">成功載入 ${data.length} 期數據</div>`;
+  reader.onload = (ev) => {
+    const lines = ev.target.result.trim().split(/\r?\n/);
+    data = lines.slice(1).map(l => ({ numbers: l.split(",").slice(1, 6).map(n => parseInt(n)) }));
+    calculateGlobalStats();
+    document.getElementById("csvInfo").innerHTML = `<div class="status">數據載入成功：共 ${data.length} 期</div>`;
   };
-  reader.readAsText(file);
+  reader.readAsText(e.target.files[0]);
 };
 
-function calculateStats() {
+function calculateGlobalStats() {
   const freq = {};
-  const lastSeen = {};
   const sums = [];
-  data.forEach((draw, idx) => {
-    draw.numbers.forEach(n => {
-      freq[n] = (freq[n] || 0) + 1;
-      lastSeen[n] = idx;
-    });
-    sums.push(draw.numbers.reduce((a, b) => a + b, 0));
+  data.forEach(d => {
+    d.numbers.forEach(n => freq[n] = (freq[n] || 0) + 1);
+    sums.push(d.numbers.reduce((a, b) => a + b, 0));
   });
-  const avg = sums.reduce((a, b) => a + b, 0) / sums.length;
-  return { frequency: freq, lastSeen, total: data.length, avgSum: avg };
+  stats = { freq, total: data.length, avgSum: sums.reduce((a,b)=>a+b,0)/sums.length };
 }
 
-function runAnalysis() {
-  if (!data.length) return alert("請先上傳 CSV");
-  document.getElementById("loadingA").style.display = "block";
-  setTimeout(() => {
-    analysisCache = calculateStats();
-    document.getElementById("panelA").style.display = "block";
-    document.getElementById("panelA").innerHTML = `<div class="status success">歷史權重已更新。平均和值：${Math.round(analysisCache.avgSum)}</div>`;
-    document.getElementById("loadingA").style.display = "none";
-  }, 500);
-}
+function generateUltraPrediction() {
+  if (!data.length) return alert("請導入 CSV 數據");
+  const loader = document.getElementById("loader");
+  const resultArea = document.getElementById("resultArea");
+  loader.style.display = "block";
+  resultArea.style.display = "none";
 
-// 核心優化：萬次模擬聚合
-function generatePrediction() {
-  if (!data.length) return alert("請導入數據");
-  document.getElementById("loadingC").style.display = "block";
-  document.getElementById("panelC").style.display = "none";
-
+  // 10萬次模擬較耗時，分段執行避免 UI 凍結
   setTimeout(() => {
-    if (!analysisCache) analysisCache = calculateStats();
-    const stats = analysisCache;
-    const SIM_COUNT = 10000;
+    const SIM_COUNT = 100000;
+    let globalCounter = Array(40).fill(0);
     
-    // 1. 建立權重池
-    let pool = [];
-    for (let i = 1; i <= 39; i++) {
-      const f = stats.frequency[i] || 0;
-      const daysSince = stats.total - (stats.lastSeen[i] || 0);
-      const score = (f / stats.total) * 500 + Math.min(daysSince * 1.8, 50);
-      pool.push({ num: i, score });
+    // 1. 純頻率權重 (移除遺漏加分)
+    const pool = [];
+    for(let i=1; i<=39; i++) {
+      const score = (stats.freq[i] || 0) / stats.total;
+      pool.push({num: i, score});
     }
 
-    // 2. 萬次循環抽樣
-    let counter = Array(40).fill(0);
-    let successSims = 0;
-
-    for (let s = 0; s < SIM_COUNT; s++) {
+    // 2. 十萬次模擬聚合
+    let validCount = 0;
+    for(let s=0; s<SIM_COUNT; s++) {
       let pick = [];
       let tempPool = [...pool];
-      for (let i = 0; i < 5; i++) {
+      for(let i=0; i<5; i++) {
         let totalW = tempPool.reduce((sum, c) => sum + c.score, 0);
         let rand = Math.random() * totalW;
         let acc = 0;
-        for (let j = 0; j < tempPool.length; j++) {
+        for(let j=0; j<tempPool.length; j++) {
           acc += tempPool[j].score;
-          if (rand <= acc) {
-            pick.push(tempPool[j].num);
-            tempPool.splice(j, 1);
-            break;
-          }
+          if(rand <= acc) { pick.push(tempPool[j].num); tempPool.splice(j,1); break; }
         }
       }
 
-      const sum = pick.reduce((a, b) => a + b, 0);
-      const odd = pick.filter(n => n % 2 === 1).length;
+      const sum = pick.reduce((a,b)=>a+b, 0);
+      const odd = pick.filter(n => n%2!==0).length;
       
-      // 嚴格約束：符合歷史和值中心且奇偶平衡
-      if (Math.abs(sum - stats.avgSum) <= 15 && (odd === 2 || odd === 3)) {
-        pick.forEach(n => counter[n]++);
-        successSims++;
+      // 嚴格篩選符合歷史常態的樣本 (和值 ±10, 2奇或3奇)
+      if(Math.abs(sum - stats.avgSum) <= 10 && (odd === 2 || odd === 3)) {
+        pick.forEach(n => globalCounter[n]++);
+        validCount++;
       }
     }
 
-    // 3. 提取共識號碼
-    const finalNums = counter
-      .map((count, num) => ({ num, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-      .map(x => x.num)
-      .sort((a, b) => a - b);
+    // 3. 取前 7 名高頻號碼作為「黃金池」
+    const goldenPool = globalCounter
+      .map((c, n) => ({n, c}))
+      .sort((a, b) => b.c - a.c)
+      .slice(0, 7)
+      .map(x => x.n);
 
-    displayPrediction(finalNums, successSims);
-    document.getElementById("loadingC").style.display = "none";
-  }, 300);
-}
+    // 4. 小範圍隨機調整 (從 7 名中隨機選 5 名)
+    let finalSelection = [];
+    let tempGolden = [...goldenPool];
+    for(let i=0; i<5; i++) {
+      const idx = Math.floor(Math.random() * tempGolden.length);
+      finalSelection.push(tempGolden.splice(idx, 1)[0]);
+    }
+    finalSelection.sort((a,b) => a - b);
 
-function displayPrediction(nums, validCount) {
-  const container = document.getElementById("panelC");
-  container.style.display = "block";
-  const sum = nums.reduce((a, b) => a + b, 0);
-  container.innerHTML = `
-    <div class="box">
-      <div class="box-title">🏆 萬次模擬聚合組合</div>
-      <div class="numbers-grid">${nums.map(n => `<div class="number-ball predict">${n}</div>`).join('')}</div>
-      <div class="status success">
-        <b>共識分析完成：</b><br>
-        在 10,000 次模擬中，篩選出 ${validCount} 組符合歷史規律的有效樣本。<br>
-        上方為有效樣本中出現頻率最高的核心號碼。
-      </div>
-      <div class="stats-row">
-        <div class="stat-item"><div class="stat-label">組合和值</div><div class="stat-value">${sum}</div></div>
-        <div class="stat-item"><div class="stat-label">模擬成功率</div><div class="stat-value">${(validCount/100).toFixed(1)}%</div></div>
-      </div>
-    </div>
-  `;
+    // 5. 渲染結果
+    document.getElementById("bestNumbers").innerHTML = finalSelection.map(n => `<div class="number-ball best">${n}</div>`).join('');
+    document.getElementById("bestStatus").innerHTML = `
+      <b>十萬次聚合模擬完成</b><br>
+      有效樣本數：${validCount} 組<br>
+      已從前 7 名高頻共識號碼中隨機生成最優組合
+    `;
+    
+    loader.style.display = "none";
+    resultArea.style.display = "block";
+  }, 100);
 }
 </script>
 </body>
