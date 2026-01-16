@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 三元共振系統 - 優化 v71</title>
+    <title>AI 三角共振集彈系統 - 優化 v72</title>
     <style>
         :root { --primary: #2c3e50; --accent: #e74c3c; --success: #27ae60; --bg: #f4f7f6; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: var(--bg); margin: 0; padding: 20px; }
@@ -14,28 +14,29 @@
         table { border-collapse: collapse; width: 100%; white-space: nowrap; background: white; }
         th, td { border: 1px solid #eee; text-align: center; padding: 10px 5px; font-size: 13px; }
         th { background: var(--primary); color: white; }
-        .best-hit { background-color: #fff3cd !important; border: 2px solid #f1c40f !important; }
+        .best-hit { background-color: #fff9c4 !important; border: 2px solid #fbc02d !important; } /* 命中 3 顯色 */
+        .good-hit { background-color: #e8f5e9 !important; border: 2px solid var(--success) !important; }
         .hit-count { font-weight: bold; color: var(--success); font-size: 1.3rem; }
     </style>
 </head>
 <body>
 
     <div class="panel">
-        <h3 class="panel-title">1. 數據解析 (v71 三元共振版)</h3>
+        <h3 class="panel-title">1. 數據解析 (v72 三角集彈版)</h3>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
     <div id="analysisSection" style="display:none;">
         <div class="panel">
-            <h3 class="panel-title">2. AI 共振預測 (目標：40% 命中 3)</h3>
+            <h3 class="panel-title">2. AI 三角預測 (目標：40% 命中 3)</h3>
             <div id="predictionResults"></div>
         </div>
 
         <div class="panel">
-            <h3 class="panel-title">3. 滾動回測 (高壓集彈檢驗)</h3>
+            <h3 class="panel-title">3. 滾動回測 (高集彈率驗證)</h3>
             <div class="table-container">
                 <table>
-                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v71)</th><th>命中</th></tr></thead>
+                    <thead><tr><th>日期</th><th>真實獎號</th><th>預測組合 (v72)</th><th>命中</th></tr></thead>
                     <tbody id="backtestBody"></tbody>
                 </table>
             </div>
@@ -61,13 +62,13 @@
             if (data.length > 0) processSystem(data);
         }
 
-        function getResonancePick(history) {
+        function getTriangularPick(history) {
             let scores = Array(40).fill(0);
             let missArr = Array(40).fill(0);
             const lastNums = history[history.length - 1].nums;
-            const recentNums = history.slice(-5).flatMap(h => h.nums);
+            const shortTermNums = history.slice(-3).flatMap(h => h.nums); // 縮短尾數分析
             let tailFreq = Array(10).fill(0);
-            recentNums.forEach(n => tailFreq[n % 10]++);
+            shortTermNums.forEach(n => tailFreq[n % 10]++);
 
             for (let i = 1; i <= 39; i++) {
                 let m = 0;
@@ -75,39 +76,39 @@
                     if (!history[j].nums.includes(i)) m++; else break;
                 }
                 missArr[i] = m;
-                // v71 高壓評分體系
-                if (m === 1) scores[i] += 1000;      // 絕對熱區
-                else if (m >= 5 && m <= 9) scores[i] += 800; // 黃金反彈
-                else if (m === 0) scores[i] += 400;  // 連莊
-                else if (m >= 13) scores[i] = 0;     // 排除極冷
-                else scores[i] += 100;
+                // v72 極壓評分
+                if (m === 1) scores[i] += 1200;       
+                else if (m >= 5 && m <= 9) scores[i] += 850; 
+                else if (m === 0) scores[i] += 450;
+                else if (m >= 13) scores[i] = 0;
+                else scores[i] += 50; // 壓低非核心
 
-                scores[i] += tailFreq[i % 10] * 60; // 強化同尾
-                if (lastNums.some(ln => Math.abs(ln - i) === 1)) scores[i] += 300; // 強化鄰號
+                scores[i] += tailFreq[i % 10] * 70; // 尾數權重極大化
+                if (lastNums.some(ln => Math.abs(ln - i) === 1)) scores[i] += 350; // 鄰號權重極大化
             }
 
             let sorted = Array.from({length: 39}, (_, i) => i + 1).sort((a, b) => scores[b] - scores[a]);
             let final = [];
 
-            // 1. 強力核心 (集彈點 A)
+            // 1. 建立三角核心 (命中 3 的關鍵)
             let core = sorted[0];
             final.push(core);
 
-            // 2. 同尾共振 (集彈點 B)
+            // 尋找同尾中評分最高的一顆 (形成同尾對)
             let tailMate = sorted.find(n => !final.includes(n) && (n % 10 === core % 10));
             if (tailMate) final.push(tailMate);
 
-            // 3. 鄰號連鎖 (集彈點 C)
+            // 尋找鄰號中評分最高的一顆 (形成連號對)
             let neighborMate = sorted.find(n => !final.includes(n) && Math.abs(n - core) === 1);
             if (neighborMate) final.push(neighborMate);
 
-            // 4. 反彈區域鎖定 (集彈點 D) - 尋找冷區評分最高號
-            let coldCore = sorted.find(n => !final.includes(n) && missArr[n] >= 5 && missArr[n] <= 9);
-            if (coldCore) {
-                final.push(coldCore);
-                // 5. 反彈號的共振號
-                let coldMate = sorted.find(n => !final.includes(n) && (n % 10 === coldCore % 10 || Math.abs(n - coldCore) === 1));
-                if (coldMate) final.push(coldMate);
+            // 2. 建立反彈核心 (命中 3 的備援)
+            let bounceCore = sorted.find(n => !final.includes(n) && missArr[n] >= 5 && missArr[n] <= 9);
+            if (bounceCore) {
+                final.push(bounceCore);
+                // 為反彈核心再配一顆同尾或鄰號，強化集彈效應
+                let bounceMate = sorted.find(n => !final.includes(n) && (n % 10 === bounceCore % 10 || Math.abs(n - bounceCore) === 1));
+                if (bounceMate) final.push(bounceMate);
             }
 
             // 補齊位
@@ -123,14 +124,15 @@
             const tbody = document.getElementById('backtestBody');
             tbody.innerHTML = '';
             for (let i = data.length - 1; i > data.length - 11; i--) {
-                const pred = getResonancePick(data.slice(0, i));
+                const pred = getTriangularPick(data.slice(0, i));
                 const hits = pred.filter(n => data[i].nums.includes(n));
                 const tr = document.createElement('tr');
                 if (hits.length >= 3) tr.className = 'best-hit';
+                else if (hits.length >= 2) tr.className = 'good-hit';
                 tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${pred.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''}">${n}</span>`).join('')}</td><td class="hit-count">${hits.length}</td>`;
                 tbody.appendChild(tr);
             }
-            const nextP = getResonancePick(data);
+            const nextP = getTriangularPick(data);
             document.getElementById('predictionResults').innerHTML = nextP.map(n=>`<span class="num-badge" style="font-size:1.2rem">${n}</span>`).join('');
             document.getElementById('analysisSection').style.display = 'block';
         }
