@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v116</title>
+    <title>AI 539 數據中心 v117</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
@@ -36,10 +36,10 @@
     <div id="mainDisplay" style="display:none;">
         <div class="grid-split">
             <div class="panel">
-                <div class="panel-header">下期預測組合 (v116 區間平衡型)</div>
-                <p style="font-size:0.7rem; color:var(--sub);">重點引力號：</p>
+                <div class="panel-header">下期預測組合 (v117 三元集彈)</div>
+                <p style="font-size:0.7rem; color:var(--sub);">最強引力中心：</p>
                 <div id="anchorBall" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">預計集彈組合：</p>
+                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">三元連結組合：</p>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
 
@@ -86,7 +86,7 @@
         mBody.innerHTML = ''; btContainer.innerHTML = '';
 
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV116Pick(state.data.slice(0, i));
+            const pred = getV117Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             const item = document.createElement('div');
@@ -104,13 +104,13 @@
             tr.innerHTML = trHtml;
             mBody.appendChild(tr);
         }
-        const final = getV116Pick(state.data);
+        const final = getV117Pick(state.data);
         document.getElementById('anchorBall').innerHTML = `<div class="ball anchor">${final.one}</div>`;
         document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${n===final.one?'anchor':''}">${n}</div>`).join('');
         document.getElementById('mainDisplay').style.display = 'block';
     }
 
-    function getV116Pick(hist) {
+    function getV117Pick(hist) {
         if(hist.length === 0) return {res:[], one:0};
         let sc = Array(40).fill(0);
         const last = hist[hist.length-1].nums;
@@ -121,41 +121,39 @@
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
-            if(gap === 1) sc[i] += 2600; 
-            else if(gap >= 5 && gap <= 9) sc[i] += 3000 - (gap-5)*100; // v116: 越靠近5期權重越高
-            else if(gap === 0) sc[i] += 750; 
+            
+            // v117 核心策略：細化黃金反彈與鄰域
+            if(gap === 1) sc[i] += 2700; 
+            else if(gap >= 5 && gap <= 9) {
+                sc[i] += 3200; // 提高 L5-9 基礎權重
+                if(gap === 6 || gap === 7) sc[i] += 200; // 針對 6, 7 期加成
+            }
+            else if(gap === 0) sc[i] += 700; 
+            
             sc[i] += tailF[i%10] * 500; 
-            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 950;
+            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 1050; // 斜連加強
         }
 
         let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
         let res = [], one = sorted[0];
         res.push(one);
         
-        // v116: 溫和的二次加權（800），並檢查區間
-        let subSc = [...sc];
+        // v117 三元集彈：對核心執行「連號+間隔+同尾」三維加權
+        let triSc = [...sc];
         for(let i=1; i<=39; i++) {
-            if(Math.abs(i - one) <= 2) subSc[i] += 800; // 擴大鄰域範圍至 2
-            if(i % 10 === one % 10) subSc[i] += 800;
+            if(Math.abs(i - one) === 1) triSc[i] += 1200; // 連號
+            if(Math.abs(i - one) === 2) triSc[i] += 600;  // 間隔
+            if(i % 10 === one % 10) triSc[i] += 1200;    // 同尾
         }
         
-        let subSorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>subSc[b]-subSc[a]);
+        let triSorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>triSc[b]-triSc[a]);
         
-        // 選號並檢查十位數區間分佈 (0, 1, 2, 3)
-        for(let n of subSorted) {
-            if(res.length >= 5) break;
-            if(res.includes(n)) continue;
-            
-            let zone = Math.floor(n/10);
-            let zoneCount = res.filter(r => Math.floor(r/10) === zone).length;
-            
-            // 單一區間不超過2個號碼，除非分數極高
-            if(zoneCount < 2 || subSc[n] > 4000) {
-                res.push(n);
-            }
+        // 選號：確保三元加權號碼入選
+        for(let n of triSorted) {
+            if(res.length >= 4) break; // 先留1個位置給全域最高分
+            if(!res.includes(n)) res.push(n);
         }
 
-        // 補齊剩餘號碼
         while(res.length < 5) {
             let next = sorted.find(n => !res.includes(n));
             res.push(next);
