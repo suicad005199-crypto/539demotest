@@ -2,165 +2,193 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>AI 尾數坍縮系統 - v106</title>
+    <title>AI 中樞感應系統 - v107</title>
     <style>
-        :root { --p: #2c3e50; --s: #27ae60; --b: #f4f7f6; --a: #e74c3c; --h: #f1c40f; }
-        body { font-family: sans-serif; background: var(--b); padding: 20px; color: var(--p); font-size: 13px; }
-        .panel { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .num-badge { display: inline-block; background: var(--p); color: white; border-radius: 4px; padding: 4px 10px; margin: 2px; font-weight: bold; }
-        .hit-badge { background: var(--s) !important; box-shadow: 0 0 8px var(--s); }
-        .best-one { background: var(--h) !important; color: #000 !important; border: 2px solid #000; }
+        :root { --bg: #1a1a1a; --card: #242424; --text: #e0e0e0; --primary: #f1c40f; --success: #27ae60; --danger: #e74c3c; --border: #333; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); padding: 20px; margin: 0; }
+        .dashboard { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .card { background: var(--card); border-radius: 12px; padding: 25px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px; display: inline-block; }
         
-        table { width: 100%; border-collapse: collapse; background: white; table-layout: fixed; }
-        th, td { border: 1px solid #ddd; padding: 5px 1px; text-align: center; font-size: 0.7rem; }
-        th { background: var(--p); color: white; }
-        .best-hit { background-color: #fffde7 !important; font-weight: bold; }
+        /* UI 元素 */
+        .file-input { background: #333; color: white; padding: 10px; border-radius: 6px; border: 1px solid var(--border); width: 100%; box-sizing: border-box; }
+        .num-badge { display: inline-block; background: #3d3d3d; color: white; border-radius: 6px; padding: 8px 18px; margin: 4px; font-weight: 700; font-size: 1.1rem; border: 1px solid #555; }
+        .best-one { background: var(--primary) !important; color: #000 !important; transform: scale(1.1); box-shadow: 0 0 15px var(--primary); }
+        .hit-badge { background: var(--success) !important; border-color: var(--success); }
         
-        /* 矩陣增強 */
-        .date-col { width: 80px; background: #f9f9f9; font-weight: bold; }
-        .active-num { background: #fff5f5; color: var(--a); font-weight: bold; border: 1px solid var(--a); }
-        .hit-num { background: var(--s) !important; color: white !important; }
+        /* 矩陣與表格 */
+        .table-container { overflow-x: auto; margin-top: 15px; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; background: #2a2a2a; color: #bbb; table-layout: fixed; }
+        th, td { border: 1px solid #383838; padding: 8px 2px; text-align: center; font-size: 0.75rem; }
+        th { background: #1f1f1f; color: var(--primary); }
+        .date-col { width: 90px; background: #222; font-weight: bold; color: #888; }
+        .active-num { background: rgba(231, 76, 60, 0.2); color: var(--danger); font-weight: bold; }
+        .hit-num { background: var(--success) !important; color: white !important; font-size: 0.85rem; }
+        .best-hit-row { background: rgba(39, 174, 96, 0.1) !important; }
 
-        .collapse-btn { width: 100%; padding: 12px; background: var(--p); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; text-align: left; }
-        .collapse-content { display: none; padding: 15px; border: 1px solid #ddd; border-top: none; background: white; border-radius: 0 0 8px 8px; font-size: 0.9rem; line-height: 1.6; }
+        /* 收合說明 */
+        .collapse-btn { width: 100%; padding: 15px; background: #333; color: var(--primary); border: none; border-radius: 8px; cursor: pointer; font-weight: bold; text-align: left; transition: 0.3s; }
+        .collapse-btn:hover { background: #444; }
+        .collapse-content { display: none; padding: 20px; background: #1f1f1f; border-radius: 0 0 8px 8px; font-size: 0.95rem; color: #aaa; line-height: 1.8; }
     </style>
 </head>
 <body>
 
-    <div class="panel">
-        <h3>1. 數據解析 (v106 尾數坍縮版)</h3>
-        <input type="file" id="csvFile" accept=".csv">
+<div class="dashboard">
+    <div class="card">
+        <h3>1. 數據解析與注入</h3>
+        <input type="file" id="csvFile" class="file-input" accept=".csv">
     </div>
 
     <div id="resSection" style="display:none;">
-        <div class="panel">
-            <h3>2. AI 核心預測 (衝刺 40% 命中 3)</h3>
-            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; padding: 15px; background: #fffdf0; border: 2px solid var(--h); border-radius: 8px;">
-                <div><strong>★ 本期唯一最優號碼：</strong><br><span id="theOneBadge" style="font-size: 1.8rem;"></span></div>
-                <div style="border-left: 2px solid #ddd; padding-left: 15px;">
-                    <strong>尾數坍縮組合：</strong><div id="predResult"></div>
+        <div class="card">
+            <h3>2. AI 核心中樞預測</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 15px;">
+                <div style="padding: 20px; background: #2d2d2d; border-radius: 10px; border: 1px solid var(--primary);">
+                    <div style="font-size: 0.9rem; color: #888; margin-bottom: 10px;">★ 全域最優引力錨點</div>
+                    <div id="theOneBadge"></div>
+                </div>
+                <div style="padding: 20px; background: #2d2d2d; border-radius: 10px; border: 1px solid var(--success);">
+                    <div style="font-size: 0.9rem; color: #888; margin-bottom: 10px;">本次中樞坍縮組合</div>
+                    <div id="predResult"></div>
                 </div>
             </div>
         </div>
 
-        <div class="panel" style="overflow-x: auto;">
-            <h3>3. 連號分布矩陣 (日期首列 1-39)</h3>
-            <table id="distMatrix">
-                <thead><tr id="matrixHeader"></tr></thead>
-                <tbody id="matrixBody"></tbody>
-            </table>
+        <div class="card">
+            <h3>3. 連號分布矩陣 (空間分佈檢驗)</h3>
+            <div class="table-container">
+                <table>
+                    <thead><tr id="matrixHeader"></tr></thead>
+                    <tbody id="matrixBody"></tbody>
+                </table>
+            </div>
         </div>
 
-        <div class="panel">
-            <h3>4. 滾動回測紀錄</h3>
-            <table id="btTable">
-                <thead><tr><th style="width:90px;">日期</th><th>真實獎號</th><th>預測組合</th><th style="width:50px;">命中</th></tr></thead>
-                <tbody id="btBody"></tbody>
-            </table>
+        <div class="card">
+            <h3>4. 滾動回測效能報告</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th style="width:100px;">日期</th><th>真實獎號</th><th>AI 預測組合</th><th style="width:70px;">命中</th></tr>
+                    </thead>
+                    <tbody id="btBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <div class="panel">
-        <button class="collapse-btn" onclick="toggleCollapse()">▼ v106 策略邏輯詳解</button>
+    <div class="card" style="padding:0; border:none; background:transparent;">
+        <button class="collapse-btn" onclick="toggleCollapse()">▼ v107 中樞感應演算法說明</button>
         <div id="strategyDetail" class="collapse-content">
-            <strong>1. 尾數坍縮核心：</strong> 鎖定評分第一號碼，並強制提取其同尾號，捕捉 539 高頻率的同尾雙開三星現象。<br>
-            <strong>2. 反彈權重最大化：</strong> 將 L5-9 (遺漏 5-9 期) 權重提升至 2500，重點打擊冷熱交替期的「回溫球」。<br>
-            <strong>3. 空間矩陣監控：</strong> 表格呈現 1-39 分布，紅框表示預測，綠色點亮命中。
+            <strong>• 中樞錨點鎖定：</strong> 提取全域評分最高號碼（The One），並依據其「尾數能階」與「區間連動」決定輔助號碼。<br>
+            <strong>• 鄰域飽和攻擊：</strong> 針對最優號周邊（±1, ±2）進行高權重掃描，補足 v106 中號碼散開的物理缺陷。<br>
+            <strong>• 矩陣熱力分析：</strong> 橫向監控 1-39 號碼分佈。若某一區間（如 10-19）紅點密度超過 3，該區間即標定為「三星爆發區」。<br>
+            <strong>• 動能權重調整：</strong> L5-9 反彈權重鎖定在 2500，L1 斜連鎖定在 2300，並優化了遺漏 2-4 期號碼的吸引力係數。
         </div>
     </div>
+</div>
 
-    <script>
-        document.getElementById('csvFile').addEventListener('change', e => {
-            const reader = new FileReader();
-            reader.onload = () => process(reader.result);
-            reader.readAsText(e.target.files[0]);
-        });
+<script>
+    const state = { data: [] };
+    
+    document.getElementById('csvFile').addEventListener('change', e => {
+        const reader = new FileReader();
+        reader.onload = () => process(reader.result);
+        reader.readAsText(e.target.files[0]);
+    });
 
-        function toggleCollapse() {
-            const content = document.getElementById('strategyDetail');
-            content.style.display = content.style.display === 'block' ? 'none' : 'block';
+    function toggleCollapse() {
+        const content = document.getElementById('strategyDetail');
+        content.style.display = content.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function initMatrixHeader() {
+        const header = document.getElementById('matrixHeader');
+        header.innerHTML = '<th class="date-col">日期 \\ 號碼</th>';
+        for(let i=1; i<=39; i++) {
+            let th = document.createElement('th');
+            th.innerText = i < 10 ? '0'+i : i;
+            header.appendChild(th);
         }
+    }
 
-        function initMatrixHeader() {
-            const header = document.getElementById('matrixHeader');
-            header.innerHTML = '<th class="date-col">日期 \\ 號碼</th>';
-            for(let i=1; i<=39; i++) {
-                let th = document.createElement('th');
-                th.innerText = i;
-                header.appendChild(th);
-            }
-        }
+    function process(text) {
+        const rows = text.trim().split('\n').map(r => r.split(','));
+        state.data = rows.filter(r => !isNaN(r[1])).map(r => ({ date: r[0], nums: r.slice(1, 6).map(Number).sort((a,b)=>a-b) }));
+        initMatrixHeader();
+        render();
+    }
 
-        function process(text) {
-            const rows = text.trim().split('\n').map(r => r.split(','));
-            const data = rows.filter(r => !isNaN(r[1])).map(r => ({ date: r[0], nums: r.slice(1, 6).map(Number).sort((a,b)=>a-b) }));
-            initMatrixHeader();
-            const btBody = document.getElementById('btBody');
-            const mBody = document.getElementById('matrixBody');
-            btBody.innerHTML = ''; mBody.innerHTML = '';
+    function render() {
+        const btBody = document.getElementById('btBody');
+        const mBody = document.getElementById('matrixBody');
+        btBody.innerHTML = ''; mBody.innerHTML = '';
+        
+        for (let i = state.data.length - 1; i > state.data.length - 11; i--) {
+            const predObj = getV107Pick(state.data.slice(0, i));
+            const hits = predObj.res.filter(n => state.data[i].nums.includes(n));
             
-            for (let i = data.length - 1; i > data.length - 11; i--) {
-                const predObj = getV106Pick(data.slice(0, i));
-                const hits = predObj.res.filter(n => data[i].nums.includes(n));
-                const tr = document.createElement('tr');
-                if (hits.length >= 3) tr.className = 'best-hit';
-                tr.innerHTML = `<td>${data[i].date}</td><td>${data[i].nums}</td><td>${predObj.res.map(n=>`<span class="num-badge ${data[i].nums.includes(n)?'hit-badge':''} ${n===predObj.one?'best-one':''}">${n}</span>`).join('')}</td><td style="font-size:1.2rem; font-weight:bold;">${hits.length}</td>`;
-                btBody.appendChild(tr);
+            // 回測行
+            const tr = document.createElement('tr');
+            if (hits.length >= 3) tr.className = 'best-hit-row';
+            tr.innerHTML = `<td>${state.data[i].date}</td><td>${state.data[i].nums.join(', ')}</td><td>${predObj.res.map(n=>`<span class="num-badge ${state.data[i].nums.includes(n)?'hit-badge':''} ${n===predObj.one?'best-one':''}">${n}</span>`).join('')}</td><td style="font-size:1.4rem; font-weight:bold; color:var(--success)">${hits.length}</td>`;
+            btBody.appendChild(tr);
 
-                const mTr = document.createElement('tr');
-                let mHtml = `<td class="date-col">${data[i].date}</td>`;
-                for(let n=1; n<=39; n++) {
-                    const isPred = predObj.res.includes(n);
-                    const isHit = data[i].nums.includes(n) && isPred;
-                    mHtml += `<td class="${isPred?'active-num':''} ${isHit?'hit-num':''}">${isPred?n:''}</td>`;
-                }
-                mTr.innerHTML = mHtml;
-                mBody.appendChild(mTr);
+            // 矩陣行
+            const mTr = document.createElement('tr');
+            let mHtml = `<td class="date-col">${state.data[i].date}</td>`;
+            for(let n=1; n<=39; n++) {
+                const isPred = predObj.res.includes(n);
+                const isHit = state.data[i].nums.includes(n) && isPred;
+                mHtml += `<td class="${isPred?'active-num':''} ${isHit?'hit-num':''}">${isPred?n:''}</td>`;
             }
-            const final = getV106Pick(data);
-            document.getElementById('theOneBadge').innerHTML = `<span class="num-badge best-one">${final.one}</span>`;
-            document.getElementById('predResult').innerHTML = final.res.map(n=>`<span class="num-badge ${n===final.one?'best-one':''}" style="font-size:1.4rem">${n}</span>`).join('');
-            document.getElementById('resSection').style.display = 'block';
+            mTr.innerHTML = mHtml;
+            mBody.appendChild(mTr);
+        }
+        
+        const final = getV107Pick(state.data);
+        document.getElementById('theOneBadge').innerHTML = `<span class="num-badge best-one">${final.one}</span>`;
+        document.getElementById('predResult').innerHTML = final.res.map(n=>`<span class="num-badge ${n===final.one?'best-one':''}" style="font-size:1.3rem">${n}</span>`).join('');
+        document.getElementById('resSection').style.display = 'block';
+    }
+
+    function getV107Pick(hist) {
+        let sc = Array(40).fill(0), ms = Array(40).fill(0);
+        const last = hist[hist.length-1].nums, recent = hist.slice(-8).flatMap(h=>h.nums);
+        let tf = Array(10).fill(0); recent.forEach(n=>tf[n%10]++);
+
+        for (let i=1; i<=39; i++) {
+            let m = 0; for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) m++; else break; }
+            ms[i] = m;
+            if(m===1) sc[i]+=2300; 
+            else if(m>=5 && m<=9) sc[i]+=2500; 
+            else if(m>=2 && m<=4) sc[i]+=550; 
+            else if(m===0) sc[i]+=600; 
+            sc[i] += tf[i%10]*450; 
+            if(last.some(ln=>Math.abs(ln-i)===1)) sc[i]+=700;
         }
 
-        function getV106Pick(hist) {
-            let sc = Array(40).fill(0), ms = Array(40).fill(0);
-            const last = hist[hist.length-1].nums, recent = hist.slice(-8).flatMap(h=>h.nums);
-            let tf = Array(10).fill(0); recent.forEach(n=>tf[n%10]++);
+        let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
+        let res = [], one = sorted[0];
+        res.push(one);
+        
+        // v107 中樞坍縮：優先補全同區間的能階
+        let sameZone = sorted.filter(n => n !== one && Math.floor((n-1)/10) === Math.floor((one-1)/10));
+        if(sameZone.length > 0) res.push(sameZone[0]);
+        
+        // 鄰域鏈或同尾鏈
+        let link = sorted.find(n => !res.includes(n) && (Math.abs(n-one)<=2 || n%10 === one%10));
+        if(link) res.push(link);
 
-            for (let i=1; i<=39; i++) {
-                let m = 0; for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) m++; else break; }
-                ms[i] = m;
-                if(m===1) sc[i]+=2300; 
-                else if(m>=5 && m<=9) sc[i]+=2500; 
-                else if(m>=2 && m<=4) sc[i]+=450; 
-                else if(m===0) sc[i]+=600; 
-                else if(m>=11) sc[i]=0; 
-                sc[i] += tf[i%10]*500; 
-                if(last.some(ln=>Math.abs(ln-i)===1)) sc[i]+=700;
-            }
-
-            let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
-            let res = [], one = sorted[0];
-            res.push(one);
-            
-            // 尾數坍縮鏈
-            let sameTail = sorted.find(n => !res.includes(n) && n%10 === one%10);
-            if(sameTail) res.push(sameTail);
-            
-            // 鄰域鏈
-            let neighbor = sorted.find(n => !res.includes(n) && Math.abs(n-one)===1);
-            if(neighbor) res.push(neighbor);
-
-            // 跨區動能補位
-            while (res.length < 5) {
-                let next = sorted.find(n => !res.includes(n) && Math.abs(Math.floor(n/10)-Math.floor(one/10)) >= 1);
-                if(!next) next = sorted.find(n => !res.includes(n));
-                res.push(next);
-            }
-
-            return { res: res.sort((a, b) => a - b), one: one };
+        // 跨區補位 (捕捉跨度)
+        while (res.length < 5) {
+            let next = sorted.find(n => !res.includes(n));
+            res.push(next);
         }
-    </script>
+
+        return { res: res.sort((a, b) => a - b), one: one };
+    }
+</script>
 </body>
 </html>
