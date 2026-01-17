@@ -3,70 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 v113 - iOS Edition</title>
+    <title>AI 539 v114 - 共振雙核</title>
     <style>
-        :root { --bg: #000000; --card: #1C1C1E; --primary: #FFD60A; --success: #32D74B; --border: #38383A; --text: #FFFFFF; --sub: #8E8E93; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; -webkit-font-smoothing: antialiased; }
-        .container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+        :root { --bg: #000; --panel: #121214; --primary: #ffd60a; --success: #32d74b; --border: #2c2c2e; --text: #f2f2f7; --sub: #8e8e93; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
+        .container { max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
         
-        /* 獨立 Panel 區域 */
-        .panel { background: var(--card); border-radius: 20px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border: 1px solid var(--border); }
-        .panel-title { color: var(--primary); font-size: 0.85rem; font-weight: 700; margin-bottom: 16px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px; }
-        .panel-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+        /* 獨立模組區域 */
+        .panel { background: var(--panel); border-radius: 18px; padding: 20px; border: 1px solid var(--border); box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
+        .panel-header { font-size: 0.8rem; font-weight: 700; color: var(--primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; letter-spacing: 1px; }
+        .panel-header::after { content: ''; flex: 1; height: 1px; background: var(--border); }
         
-        /* 號碼球樣式 */
-        .ball-group { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
-        .ball { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: #2C2C2E; border-radius: 50%; font-weight: 700; font-size: 1.1rem; border: 1px solid var(--border); }
-        .ball.best { background: var(--primary); color: #000; border: none; box-shadow: 0 0 15px rgba(255, 214, 10, 0.3); }
+        /* 號碼球 */
+        .ball-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+        .ball { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; background: #242426; border-radius: 12px; font-weight: 700; font-size: 1.1rem; border: 1px solid var(--border); }
+        .ball.core { background: var(--primary); color: #000; border: none; box-shadow: 0 0 15px rgba(255,214,10,0.4); }
         
-        /* 分布矩陣 (核心優化) */
-        .matrix-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; background: #000; margin-top: 10px; }
+        /* 回測清單 */
+        .bt-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #1c1c1e; }
+        .bt-date { font-size: 0.75rem; color: var(--sub); width: 50px; }
+        .bt-res { flex: 1; text-align: center; color: #aaa; font-size: 0.85rem; letter-spacing: 1px; }
+        .bt-hit { width: 40px; text-align: right; font-weight: 800; font-size: 1.2rem; }
+        .hit-high { color: var(--success); text-shadow: 0 0 10px rgba(50,215,75,0.5); }
+
+        /* 分佈矩陣 */
+        .matrix-wrapper { overflow-x: auto; border-radius: 10px; background: #080808; }
         table { width: 100%; border-collapse: collapse; min-width: 900px; }
-        th, td { border: 1px solid #2C2C2E; padding: 8px 0; text-align: center; font-size: 0.75rem; width: 22px; }
-        th { background: #1C1C1E; color: var(--sub); font-weight: 500; }
-        .date-cell { width: 85px; color: var(--sub); font-size: 0.7rem; background: #1C1C1E; position: sticky; left: 0; z-index: 10; }
-        .hit-dot { background: var(--primary); color: #000; font-weight: 900; border-radius: 4px; transform: scale(0.9); }
+        th, td { border: 1px solid #1a1a1c; padding: 8px 0; text-align: center; font-size: 0.75rem; }
+        th { background: #121214; color: var(--sub); font-weight: 400; }
+        .sticky-col { position: sticky; left: 0; background: #121214; z-index: 5; width: 70px; color: var(--sub); }
+        .active-dot { background: var(--primary); color: #000; font-weight: 900; border-radius: 4px; }
 
-        /* 回測紀錄 */
-        .bt-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #2C2C2E; }
-        .bt-date { color: var(--sub); font-size: 0.8rem; width: 60px; }
-        .bt-nums { flex: 1; color: #BBB; font-size: 0.85rem; text-align: center; }
-        .bt-hits { width: 30px; text-align: right; color: var(--success); font-weight: 800; font-size: 1.1rem; }
-
-        input[type="file"] { width: 100%; color: var(--sub); font-size: 0.9rem; }
-        
-        @media (min-width: 900px) {
-            .grid-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        }
+        input[type="file"] { width: 100%; color: var(--sub); font-size: 0.85rem; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="panel">
-        <div class="panel-title">DATA SOURCE</div>
+        <div class="panel-header">DATA CENTER</div>
         <input type="file" id="csvFile" accept=".csv">
     </div>
 
-    <div id="mainDisplay" style="display:none;">
-        <div class="grid-row">
-            <div class="panel">
-                <div class="panel-title">AI NEXT PREDICTION</div>
-                <div style="font-size:0.7rem; color:var(--sub); margin-bottom:4px;">ANCHOR NUMBER (核心錨點)</div>
-                <div id="bestAnchor" class="ball-group"></div>
-                <div style="font-size:0.7rem; color:var(--sub); margin-top:16px; margin-bottom:4px;">RECOMMENDED COMBO (推薦組合)</div>
-                <div id="finalCombo" class="ball-group"></div>
-            </div>
-
-            <div class="panel">
-                <div class="panel-title">BACKTEST (LAST 10)</div>
-                <div id="btList"></div>
-            </div>
+    <div id="dashboard" style="display:none;">
+        <div class="panel">
+            <div class="panel-header">V114 BINARY RESONANCE PREDICTION</div>
+            <div style="font-size:0.7rem; color:var(--sub);">PRIMARY CORE (共振雙核心)</div>
+            <div id="coreBalls" class="ball-row"></div>
+            <div style="font-size:0.7rem; color:var(--sub); margin-top:15px;">SUPPORTING SATELLITES (衛星連動)</div>
+            <div id="satBalls" class="ball-row"></div>
         </div>
 
         <div class="panel">
-            <div class="panel-title">HISTORICAL DISTRIBUTION (CSV DATA)</div>
-            <div class="matrix-scroll">
+            <div class="panel-header">ROLLING BACKTEST (FOCUS ON HIT:2)</div>
+            <div id="btList"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">HISTORICAL DISTRIBUTION (1-39)</div>
+            <div class="matrix-wrapper">
                 <table>
                     <thead><tr id="mHead"></tr></thead>
                     <tbody id="mBody"></tbody>
@@ -82,59 +77,61 @@
     document.getElementById('csvFile').addEventListener('change', e => {
         const reader = new FileReader();
         reader.onload = () => {
-            const rows = reader.result.trim().split('\n').map(r => r.split(','));
-            state.data = rows.filter(r => !isNaN(r[1])).map(r => ({
-                date: r[0],
-                nums: r.slice(1, 6).map(Number).sort((a,b)=>a-b)
-            }));
-            renderUI();
+            const lines = reader.result.trim().split('\n');
+            state.data = lines.filter(l => l.split(',')[1] && !isNaN(l.split(',')[1])).map(l => {
+                const parts = l.split(',');
+                return { date: parts[0], nums: parts.slice(1, 6).map(Number).sort((a,b)=>a-b) };
+            });
+            render();
         };
         reader.readAsText(e.target.files[0]);
     });
 
-    function renderUI() {
-        const mHead = document.getElementById('mHead');
-        const mBody = document.getElementById('mBody');
+    function render() {
         const btList = document.getElementById('btList');
+        const mBody = document.getElementById('mBody');
+        const mHead = document.getElementById('mHead');
         
-        mHead.innerHTML = '<th class="date-cell">DATE</th>';
+        mHead.innerHTML = '<th class="sticky-col">DATE</th>';
         for(let i=1; i<=39; i++) mHead.innerHTML += `<th>${i}</th>`;
         
-        mBody.innerHTML = ''; btList.innerHTML = '';
+        btList.innerHTML = ''; mBody.innerHTML = '';
 
-        // 處理最近10期數據
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV113Pick(state.data.slice(0, i));
+            const pred = getV114Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
 
-            // 回測 Panel
-            const row = document.createElement('div');
-            row.className = 'bt-row';
-            row.innerHTML = `<span class="bt-date">${state.data[i].date.slice(5)}</span>
-                             <span class="bt-nums">${real.join(' ')}</span>
-                             <span class="bt-hits">${hits.length}</span>`;
-            btList.appendChild(row);
+            // Backtest
+            const div = document.createElement('div');
+            div.className = 'bt-item';
+            div.innerHTML = `<span class="bt-date">${state.data[i].date.slice(5)}</span>
+                             <span class="bt-res">${real.join(' ')}</span>
+                             <span class="bt-hit ${hits.length>=2?'hit-high':''}">${hits.length}</span>`;
+            btList.appendChild(div);
 
-            // 分布矩陣 Panel
+            // Matrix
             const tr = document.createElement('tr');
-            let trHtml = `<td class="date-cell">${state.data[i].date.slice(5)}</td>`;
+            let trHtml = `<td class="sticky-col">${state.data[i].date.slice(5)}</td>`;
             for(let n=1; n<=39; n++) {
                 const isH = real.includes(n);
-                trHtml += `<td class="${isH?'hit-dot':''}">${isH?n:''}</td>`;
+                trHtml += `<td class="${isH?'active-dot':''}">${isH?n:''}</td>`;
             }
             tr.innerHTML = trHtml;
             mBody.appendChild(tr);
         }
 
-        const final = getV113Pick(state.data);
-        document.getElementById('bestAnchor').innerHTML = `<div class="ball best">${final.one}</div>`;
-        document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${n===final.one?'best':''}">${n}</div>`).join('');
-        document.getElementById('mainDisplay').style.display = 'block';
+        const final = getV114Pick(state.data);
+        const corePair = final.res.slice(0, 2);
+        const sats = final.res.slice(2);
+        
+        document.getElementById('coreBalls').innerHTML = corePair.map(n => `<div class="ball core">${n}</div>`).join('');
+        document.getElementById('satBalls').innerHTML = sats.map(n => `<div class="ball">${n}</div>`).join('');
+        document.getElementById('dashboard').style.display = 'block';
     }
 
-    function getV113Pick(hist) {
-        if(hist.length === 0) return {res:[], one:0};
+    function getV114Pick(hist) {
+        if(hist.length === 0) return {res:[]};
         let sc = Array(40).fill(0);
         const last = hist[hist.length-1].nums;
         const recent = hist.slice(-15).flatMap(h => h.nums);
@@ -145,32 +142,33 @@
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             
-            // 基因融合權重 (v11, v55, v93, v107 綜合)
-            if(gap === 1) sc[i] += 2700; 
-            else if(gap >= 5 && gap <= 9) sc[i] += 2850; // v93 核心反彈
-            else if(gap === 0) sc[i] += 750; // v55 連莊
+            // v114 雙星共振權重: 融合 v93, v107
+            if(gap === 1) sc[i] += 2800; 
+            else if(gap >= 5 && gap <= 9) sc[i] += 3000; // 核心冷熱動能
+            else if(gap === 0) sc[i] += 800; 
             
-            sc[i] += tailF[i%10] * 500; // v107 尾數共振
-            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 980; // v11 鄰域引力
+            sc[i] += tailF[i%10] * 550; 
+            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 1050; // 強鄰號引力
         }
 
         let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
-        let res = [], one = sorted[0];
+        
+        // 尋找雙星核心：最優號碼 + 其最強共振號碼
+        let res = [];
+        let one = sorted[0];
         res.push(one);
-        
-        // v113 核心：強制同尾集彈 (攻命中3)
-        let tailMate = sorted.find(n => !res.includes(n) && n%10 === one%10);
-        if(tailMate) res.push(tailMate);
-        
-        // 強制鎖定最優號碼附近的鄰居
-        let near = sorted.find(n => !res.includes(n) && Math.abs(n-one) <= 2);
-        if(near) res.push(near);
 
+        // 尋找與 one 最具共振潛力的第二顆球 (同尾或連號優先)
+        let two = sorted.find(n => n !== one && (n%10 === one%10 || Math.abs(n-one) === 1));
+        if(!two) two = sorted[1];
+        res.push(two);
+
+        // 補全衛星
         while(res.length < 5) {
             let next = sorted.find(n => !res.includes(n));
             res.push(next);
         }
-        return { res: res.sort((a,b)=>a-b), one: one };
+        return { res: res.sort((a,b)=>a-b) };
     }
 </script>
 </body>
