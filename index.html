@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v118</title>
+    <title>AI 539 數據中心 v119</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
@@ -36,10 +36,10 @@
     <div id="mainDisplay" style="display:none;">
         <div class="grid-split">
             <div class="panel">
-                <div class="panel-header">下期預測組合 (v118 雙軌平衡型)</div>
-                <p style="font-size:0.7rem; color:var(--sub);">最強引力中心：</p>
+                <div class="panel-header">下期預測組合 (v119 區間爆破)</div>
+                <p style="font-size:0.7rem; color:var(--sub);">雙核心引力：</p>
                 <div id="anchorBall" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">雙軌配置組合：</p>
+                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">爆破組合 (目標 2-3 命中)：</p>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
 
@@ -86,7 +86,7 @@
         mBody.innerHTML = ''; btContainer.innerHTML = '';
 
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV118Pick(state.data.slice(0, i));
+            const pred = getV119Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             const item = document.createElement('div');
@@ -104,55 +104,56 @@
             tr.innerHTML = trHtml;
             mBody.appendChild(tr);
         }
-        const final = getV118Pick(state.data);
-        document.getElementById('anchorBall').innerHTML = `<div class="ball anchor">${final.one}</div>`;
-        document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${n===final.one?'anchor':''}">${n}</div>`).join('');
+        const final = getV119Pick(state.data);
+        document.getElementById('anchorBall').innerHTML = `<div class="ball anchor">${final.one}</div><div class="ball anchor">${final.two}</div>`;
+        document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${[final.one, final.two].includes(n)?'anchor':''}">${n}</div>`).join('');
         document.getElementById('mainDisplay').style.display = 'block';
     }
 
-    function getV118Pick(hist) {
-        if(hist.length === 0) return {res:[], one:0};
+    function getV119Pick(hist) {
+        if(hist.length === 0) return {res:[], one:0, two:0};
         let sc = Array(40).fill(0);
         const last = hist[hist.length-1].nums;
         const recent = hist.slice(-15).flatMap(h => h.nums);
         let tailF = Array(10).fill(0);
         recent.forEach(n => tailF[n%10]++);
-        const maxTail = tailF.indexOf(Math.max(...tailF));
 
         for (let i=1; i<=39; i++) {
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             
-            if(gap === 1) sc[i] += 2600; 
-            else if(gap >= 5 && gap <= 9) sc[i] += 3000;
-            else if(gap === 0) sc[i] += 800;
-            else if(gap >= 12) sc[i] += 500; // 冷號回補
+            if(gap === 1) sc[i] += 2800; 
+            else if(gap >= 5 && gap <= 9) sc[i] += 3500; // v119: 強化 L5-9 爆破權重
+            else if(gap === 0) sc[i] += 850;
             
-            sc[i] += tailF[i%10] * 450; 
-            if(last.some(ln => Math.abs(ln-i) === 1)) sc[i] += 950;
+            sc[i] += tailF[i%10] * 600; 
+            if(last.some(ln => Math.abs(ln-i) === 1)) {
+                sc[i] += 1100;
+                if(recent.filter(rn => rn === i).length > 2) sc[i] += 1000; // 熱點斜連加成
+            }
         }
 
         let sorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>sc[b]-sc[a]);
-        let res = [], one = sorted[0];
-        res.push(one);
+        let one = sorted[0], two = sorted[1];
+        let res = [one, two];
         
-        // 軌道 A: 集彈配對 (核心 + 1)
+        // v119: 二次區間爆破加權
         let subSc = [...sc];
-        for(let i=1; i<=39; i++) {
-            if(Math.abs(i - one) === 1) subSc[i] += 1200; // 強連號
-            if(i % 10 === one % 10 && one % 10 === maxTail) subSc[i] += 1200; // 僅針對最熱尾加成
-        }
-        let subSorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>subSc[b]-subSc[a]);
-        let mate = subSorted.find(n => !res.includes(n));
-        res.push(mate);
+        [one, two].forEach(anchor => {
+            for(let i=1; i<=39; i++) {
+                if(Math.abs(i - anchor) <= 2) subSc[i] += 2000; // 強制區間集彈
+                if(i % 10 === anchor % 10) subSc[i] += 1500;    // 同尾鎖定
+            }
+        });
 
-        // 軌道 B: 覆蓋配置 (剩餘 3 顆)
-        for(let n of sorted) {
+        let subSorted = Array.from({length:39},(_,i)=>i+1).sort((a,b)=>subSc[b]-sc[a]);
+        
+        for(let n of subSorted) {
             if(res.length >= 5) break;
             if(!res.includes(n)) res.push(n);
         }
 
-        return { res: res.sort((a,b)=>a-b), one: one };
+        return { res: res.sort((a,b)=>a-b), one: one, two: two };
     }
 </script>
 </body>
