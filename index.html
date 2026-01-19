@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI 539 數據中心 v131</title>
+    <title>AI 539 數據中心 v132</title>
     <style>
         :root { --bg: #000; --panel: #1c1c1e; --primary: #ffd60a; --success: #32d74b; --border: #38383a; --text: #fff; --sub: #8e8e93; }
         body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 12px; }
@@ -30,14 +30,14 @@
     <div id="mainDisplay" style="display:none;">
         <div class="grid-split">
             <div class="panel">
-                <div class="panel-header">下期預測 (v131 黃金分割8碼)</div>
-                <p style="font-size:0.7rem; color:var(--sub);">3(熱):3(中):2(冷) 分位核心：</p>
+                <div class="panel-header">下期預測 (v132 陷阱8碼)</div>
+                <p style="font-size:0.7rem; color:var(--sub);">尾數陷阱核心：</p>
                 <div id="anchorBall" class="ball-row"></div>
-                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">8碼分割組合：</p>
+                <p style="font-size:0.7rem; color:var(--sub); margin-top:15px;">8碼引力組合：</p>
                 <div id="finalCombo" class="ball-row"></div>
             </div>
             <div class="panel">
-                <div class="panel-header">滾動回測 (前10期效能)</div>
+                <div class="panel-header">滾動回測 (挑戰命中4穩定度)</div>
                 <div id="btContainer"></div>
             </div>
         </div>
@@ -64,7 +64,7 @@
         const btContainer = document.getElementById('btContainer');
         btContainer.innerHTML = '';
         for (let i = state.data.length - 1; i >= Math.max(0, state.data.length - 10); i--) {
-            const pred = getV131Pick(state.data.slice(0, i));
+            const pred = getV132Pick(state.data.slice(0, i));
             const real = state.data[i].nums;
             const hits = pred.res.filter(n => real.includes(n));
             const item = document.createElement('div');
@@ -74,13 +74,13 @@
                               <div class="hit-count">${hits.length}</div>`;
             btContainer.appendChild(item);
         }
-        const final = getV131Pick(state.data);
+        const final = getV132Pick(state.data);
         document.getElementById('anchorBall').innerHTML = final.anchors.map(n => `<div class="ball anchor">${n}</div>`).join('');
         document.getElementById('finalCombo').innerHTML = final.res.map(n => `<div class="ball ${final.anchors.includes(n)?'anchor':''}">${n}</div>`).join('');
         document.getElementById('mainDisplay').style.display = 'block';
     }
 
-    function getV131Pick(hist) {
+    function getV132Pick(hist) {
         if(hist.length === 0) return {res:[], anchors:[]};
         const last = hist[hist.length-1].nums;
         let pool = [];
@@ -88,26 +88,40 @@
             let gap = 0;
             for(let j=hist.length-1; j>=0; j--) { if(!hist[j].nums.includes(i)) gap++; else break; }
             let score = 0;
-            if(last.some(ln => Math.abs(ln-i) === 1)) score += 3000;
-            if(last.some(ln => Math.abs(ln-i) === 10)) score += 1500;
+            if(last.some(ln => Math.abs(ln-i) === 1)) score += 3500; // 斜連加壓
+            if(last.some(ln => Math.abs(ln-i) === 2)) score += 2000; // 隔期跳躍加壓
+            if(last.some(ln => Math.abs(ln-i) === 10)) score += 1800;
             pool.push({n: i, gap: gap, sc: score});
         }
 
-        // 3:3:2 分位選擇
+        // 1. 熱組 (Gap 0-2): 3碼
         let hot = pool.filter(p => p.gap <= 2).sort((a,b)=>b.sc - a.sc).slice(0, 3).map(p=>p.n);
-        let mid = pool.filter(p => p.gap >= 5 && p.gap <= 9).sort((a,b)=>b.sc - a.sc).slice(0, 3).map(p=>p.n);
-        let cold = pool.filter(p => p.gap > 9).sort((a,b)=>b.sc - a.sc).slice(0, 2).map(p=>p.n);
-
-        let res = [...new Set([...hot, ...mid, ...cold])];
         
-        // 補齊至 8 碼 (若分區不足)
+        // 2. 尾數牽引: 獲取熱組的尾數
+        let hotTails = hot.map(n => n % 10);
+
+        // 3. 中組 (Gap 5-9): 3碼 (優先匹配熱組尾數)
+        let mid = pool.filter(p => p.gap >= 5 && p.gap <= 9 && !hot.includes(p.n))
+                      .sort((a,b) => {
+                          let bonusA = hotTails.includes(a.n % 10) ? 5000 : 0;
+                          let bonusB = hotTails.includes(b.n % 10) ? 5000 : 0;
+                          return (b.sc + bonusB) - (a.sc + bonusA);
+                      }).slice(0, 3).map(p=>p.n);
+
+        // 4. 冷組 (Gap > 9): 2碼
+        let cold = pool.filter(p => p.gap > 9 && !hot.includes(p.n) && !mid.includes(p.n))
+                       .sort((a,b)=>b.sc - a.sc).slice(0, 2).map(p=>p.n);
+
+        let res = [...hot, ...mid, ...cold];
+        
+        // 嚴格 8 碼修正
         let fallback = pool.sort((a,b)=>b.sc - a.sc);
         for(let p of fallback) {
             if(res.length >= 8) break;
             if(!res.includes(p.n)) res.push(p.n);
         }
 
-        return { res: res.sort((a,b)=>a-b), anchors: [res[0], res[1], res[2]] };
+        return { res: res.slice(0, 8).sort((a,b)=>a-b), anchors: hot };
     }
 </script>
 </body>
